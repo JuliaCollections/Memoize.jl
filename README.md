@@ -1,4 +1,6 @@
-# Easy memoization for Julia.
+# Memoize.jl
+
+Easy memoization for Julia.
 
 ## Usage
 
