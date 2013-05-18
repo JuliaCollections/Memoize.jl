@@ -68,14 +68,16 @@ macro memoize(ex)
     end
 
     fcache = symbol(string(f,"_cache"))
-    quote
-        $(esc(ex))
-        const ($(esc(fcache))) = (Tuple=>Any)[]
-        $(esc(quote
+    # Generate function
+    esc(quote
+        $(ex)
+        let
+            local fcache = (Tuple=>Any)[]
+            global $(f)
             $(f)($(args...),) = 
-            haskey(($fcache),($(tup...),)) ? ($fcache)[($(tup...),)] :
-            ($(fcache)[($(tup...),)] = $(u)($(identargs...),))
-        end))
-    end
+                haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
+                (fcache[($(tup...),)] = $(u)($(identargs...),))
+        end
+    end)
 end
 end
