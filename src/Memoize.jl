@@ -7,53 +7,74 @@ macro memoize(ex)
         error("@memoize must be applied to a method definition")
     end
     f = ex.args[1].args[1]
-    u = symbol(string(f,"_unmemoized"))
+    ex.args[1].args[1] = u = symbol(string(f,"_unmemoized"))
 
     args = ex.args[1].args[2:end]
 
     # Extract keywords/defaults from AST
-    if length(args) >= 2 &&
-       isa(args[1], Expr) && args[1].head == :keywords
-        kws = [args[1].args..., args[2].args...]
-        vals = args[3:end]
-    elseif length(args) >= 1 && isa(args[1], Expr) &&
-           (args[1].head == :keywords || args[1].head == :parameters)
-        kws = args[1].args
-        vals = args[2:end]
-    else
-        kws = []
-        vals = args
+    kws = {}
+    defaults = {}
+    vals = copy(args)
+    if length(vals) > 0 && isa(vals[1], Expr) && vals[1].head == :keywords
+        defaults = shift!(vals).args
+    end
+    if length(vals) > 0 && isa(vals[1], Expr) && vals[1].head == :parameters
+        kws = shift!(vals).args
     end
 
     # Set up arguments for tuple to encode keywords/defaults
-    tup = Array(Any, length(kws)+length(vals))
-    for i = 1:length(kws)
-        kw = kws[i]
+    tup = Array(Any, length(kws)+length(defaults)+length(vals))
+    i = 1
+    for kw in vcat(kws, defaults)
         if isa(kw, Expr) && (kw.head == :(=) || kw.head == :...)
             tup[i] = kw.args[1]
         else
             error("@memoize did not understand method syntax")
         end
+        i += 1
     end
 
     # Handle ellipses in arguments
-    for i = 1:length(vals)
-        val = vals[i]
-        tup[length(kws)+i] = isa(val, Expr) && val.head === :... ?
-            val.args[1] : val
+    tup[i:end] = [(isa(val, Expr) && val.head === :...) ? val.args[1] : val for val in vals]
+
+    # Set up identity arguments to pass to unmemoized function
+    identargs = Array(Any, (length(kws) > 0)+length(defaults)+length(vals))
+    i = (length(kws) > 0) + 1
+    for val in vcat(defaults, vals)
+        if isa(val, Expr)
+            if val.head == :(=)
+                val = val.args[1]
+            end
+            if isa(val, Expr) && val.head == :(::)
+                val = val.args[1]
+            end
+        end
+        identargs[i] = val
+        i += 1
+    end
+    if length(kws) > 0
+        identkws = map(kws) do kw
+            if kw.head == :(=)
+                key = kw.args[1]
+                if isa(key, Expr) && key.head == :(::)
+                    key = key.args[1]
+                end
+                :($key=$key)
+            else
+                kw
+            end
+        end
+        identargs[1] = Expr(:keywords, identkws...)
     end
 
-    # Simplify arguments to unmemoized function to remove keywords/defaults
-    ex.args[1].args = Any[u, tup...]
-
-    f_cache = symbol(string(f,"_cache"))
+    fcache = symbol(string(f,"_cache"))
     quote
         $(esc(ex))
-        const ($(esc(f_cache))) = (Tuple=>Any)[]
+        const ($(esc(fcache))) = (Tuple=>Any)[]
         $(esc(quote
             $(f)($(args...),) = 
-            haskey(($f_cache),($(tup...),)) ? ($f_cache)[($(tup...),)] :
-            ($(f_cache)[($(tup...),)] = $(u)($(tup...),))
+            haskey(($fcache),($(tup...),)) ? ($fcache)[($(tup...),)] :
+            ($(fcache)[($(tup...),)] = $(u)($(identargs...),))
         end))
     end
 end
