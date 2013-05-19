@@ -188,6 +188,10 @@ function outer()
 		run += 1
 		x
 	end
+	@memoize function inner(x, y)
+		run += 1
+		x+y
+	end
 	@test inner(5) == 5
 	@test run == 1
 	@test inner(5) == 5
@@ -196,6 +200,10 @@ function outer()
 	@test run == 2
 	@test inner(6) == 6
 	@test run == 2
+	@test inner(5, 1) == 6
+	@test run == 3
+	@test inner(5, 1) == 6
+	@test run == 3
 end
 outer()
 @test !isdefined(:inner)

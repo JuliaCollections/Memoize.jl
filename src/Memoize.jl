@@ -35,7 +35,8 @@ macro memoize(ex)
     end
 
     # Handle ellipses in arguments
-    tup[i:end] = [(isa(val, Expr) && val.head === :...) ? val.args[1] : val for val in vals]
+    tup[i:end] = [(isa(val, Expr) && val.head === :...) ?
+        val.args[1] : val for val in vals]
 
     # Set up identity arguments to pass to unmemoized function
     identargs = Array(Any, (length(kws) > 0)+length(defaults)+length(vals))
@@ -68,18 +69,28 @@ macro memoize(ex)
     end
 
     # Generate function
-    esc(quote
-        $(ex)
-        begin
-            if isdefined($(Expr(:quote, f)))
-                for i = 1
+    # This construction is bizarre, but it was the only thing I could devise
+    # that passes the tests included with this package and also frees the cache
+    # when a function is reloaded. Improvements are welcome.
+    quote
+        $(esc(ex))
+        isdef = false
+        try
+            $(esc(f))
+            isdef = true
+        end
+        if isdef
+            for i = 1
+                $(esc(quote
                     local fcache
                     const fcache = (Tuple=>Any)[]
                     $(f)($(args...),) = 
                         haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
                         (fcache[($(tup...),)] = $(u)($(identargs...),))
-                end
-            else
+                end))
+            end
+        else
+            $(esc(quote
                 const $(f) = let
                     local fcache, $f
                     const fcache = (Tuple=>Any)[]
@@ -87,8 +98,8 @@ macro memoize(ex)
                         haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
                         (fcache[($(tup...),)] = $(u)($(identargs...),))
                 end
-            end
+            end))
         end
-    end)
+    end
 end
 end
