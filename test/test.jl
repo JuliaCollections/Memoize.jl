@@ -163,3 +163,21 @@ end
 @test run == 3
 @test kw_ellipsis(a=1, b=2) == {(:a, 1), (:b, 2)}
 @test run == 3
+
+run = 0
+@memoize function multiple_dispatch(a::Int)
+	global run += 1
+	1
+end
+@memoize function multiple_dispatch(a::Float64)
+	global run += 1
+	2
+end
+@test multiple_dispatch(1) == 1
+@test run == 1
+@test multiple_dispatch(1) == 1
+@test run == 1
+@test multiple_dispatch(1.0) == 2
+@test run == 2
+@test multiple_dispatch(1.0) == 2
+@test run == 2

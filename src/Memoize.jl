@@ -72,7 +72,7 @@ macro memoize(ex)
     esc(quote
         $(ex)
         let
-            local fcache = (Tuple=>Any)[]
+            const fcache = (Tuple=>Any)[]
             global $(f)
             $(f)($(args...),) = 
                 haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
