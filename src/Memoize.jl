@@ -67,16 +67,27 @@ macro memoize(ex)
         identargs[1] = Expr(:keywords, identkws...)
     end
 
-    fcache = symbol(string(f,"_cache"))
     # Generate function
     esc(quote
         $(ex)
-        let
-            const fcache = (Tuple=>Any)[]
-            global $(f)
-            $(f)($(args...),) = 
-                haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
-                (fcache[($(tup...),)] = $(u)($(identargs...),))
+        begin
+            if isdefined($(Expr(:quote, f)))
+                for i = 1
+                    local fcache
+                    const fcache = (Tuple=>Any)[]
+                    $(f)($(args...),) = 
+                        haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
+                        (fcache[($(tup...),)] = $(u)($(identargs...),))
+                end
+            else
+                const $(f) = let
+                    local fcache, $f
+                    const fcache = (Tuple=>Any)[]
+                    $(f)($(args...),) = 
+                        haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
+                        (fcache[($(tup...),)] = $(u)($(identargs...),))
+                end
+            end
         end
     end)
 end

@@ -181,3 +181,21 @@ end
 @test run == 2
 @test multiple_dispatch(1.0) == 2
 @test run == 2
+
+function outer()
+	run = 0
+	@memoize function inner(x)
+		run += 1
+		x
+	end
+	@test inner(5) == 5
+	@test run == 1
+	@test inner(5) == 5
+	@test run == 1
+	@test inner(6) == 6
+	@test run == 2
+	@test inner(6) == 6
+	@test run == 2
+end
+outer()
+@test !isdefined(:inner)
