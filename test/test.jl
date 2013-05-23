@@ -147,7 +147,7 @@ end
 @test run == 2
 
 run = 0
-@memoize function kw_ellipsis(;a...)
+@memoize Dict function kw_ellipsis(;a...)
 	global run += 1
 	a
 end

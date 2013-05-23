@@ -1,7 +1,16 @@
 module Memoize
 export @memoize
 
-macro memoize(ex)
+macro memoize(args...)
+    if length(args) == 1
+        dicttype = :(ObjectIdDict)
+        ex = args[1]
+    elseif length(args) == 2
+        (dicttype, ex) = args
+    else
+        error("Memoize accepts at most two arguments")
+    end
+
     if !isa(ex,Expr) || (ex.head != :function && ex.head != symbol("=")) ||
        isempty(ex.args) || ex.args[1].head != :call || isempty(ex.args[1].args)
         error("@memoize must be applied to a method definition")
@@ -83,7 +92,7 @@ macro memoize(ex)
             for i = 1
                 $(esc(quote
                     local fcache
-                    const fcache = (Tuple=>Any)[]
+                    const fcache = ($dicttype)()
                     $(f)($(args...),) = 
                         haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
                         (fcache[($(tup...),)] = $(u)($(identargs...),))
@@ -93,7 +102,7 @@ macro memoize(ex)
             $(esc(quote
                 const $(f) = let
                     local fcache, $f
-                    const fcache = (Tuple=>Any)[]
+                    const fcache = ($dicttype)()
                     $(f)($(args...),) = 
                         haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
                         (fcache[($(tup...),)] = $(u)($(identargs...),))

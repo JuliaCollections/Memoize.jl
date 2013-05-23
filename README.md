@@ -21,7 +21,16 @@ julia> x(1)
 1
 ```
 
+By default, Memoize.jl uses an `ObjectIdDict` as a cache, but it's also possible to specify the type of the cache. If you want to cache vectors based on the values they contain, you probably want this:
+
+```julia
+using Memoize
+@memoize Dict function x(a)
+	println("Running")
+	a
+end
+```
+
 ## Implementation notes
 
-- `@memoize` currently uses an ordinary Dict to store tuples. An ObjectIdDict might be faster, and a WeakKeyDict might be necessary to avoid memory leaks in some situations. This needs more consideration.
 - Type inference will not work for memoized functions. If performance is critical, consider annotating the type of the output of the memoized function.
