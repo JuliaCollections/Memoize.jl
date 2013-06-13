@@ -20,23 +20,19 @@ macro memoize(args...)
 
     args = ex.args[1].args[2:end]
 
-    # Extract keywords/defaults from AST
+    # Extract keywords from AST
     kws = {}
-    defaults = {}
     vals = copy(args)
     if length(vals) > 0 && isa(vals[1], Expr) && vals[1].head == :parameters
         kws = shift!(vals).args
     end
 
-    # Set up arguments for tuple to encode keywords/defaults
+    # Set up arguments for tuple to encode keywords
     tup = Array(Any, length(kws)+length(vals))
     i = 1
     for val in vals
         tup[i] = if isa(val, Expr)
-                if val.head == :...
-                    val.args[1]
-                elseif val.head == :kw
-                    push!(defaults, val)
+                if val.head == :... || val.head == :kw
                     val.args[1]
                 elseif val.head == :(::)
                     val
