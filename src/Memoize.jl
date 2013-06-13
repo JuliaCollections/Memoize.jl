@@ -24,18 +24,33 @@ macro memoize(args...)
     kws = {}
     defaults = {}
     vals = copy(args)
-    if length(vals) > 0 && isa(vals[1], Expr) && vals[1].head == :keywords
-        defaults = shift!(vals).args
-    end
     if length(vals) > 0 && isa(vals[1], Expr) && vals[1].head == :parameters
         kws = shift!(vals).args
     end
 
     # Set up arguments for tuple to encode keywords/defaults
-    tup = Array(Any, length(kws)+length(defaults)+length(vals))
+    tup = Array(Any, length(kws)+length(vals))
     i = 1
-    for kw in vcat(kws, defaults)
-        if isa(kw, Expr) && (kw.head == :(=) || kw.head == :...)
+    for val in vals
+        tup[i] = if isa(val, Expr)
+                if val.head == :...
+                    val.args[1]
+                elseif val.head == :kw
+                    push!(defaults, val)
+                    val.args[1]
+                elseif val.head == :(::)
+                    val
+                else
+                    error("@memoize did not understand method syntax $val")
+                end
+            else
+                val
+            end
+        i += 1
+    end
+
+    for kw in kws
+        if isa(kw, Expr) && (kw.head == :kw || kw.head == :...)
             tup[i] = kw.args[1]
         else
             error("@memoize did not understand method syntax")
@@ -43,16 +58,12 @@ macro memoize(args...)
         i += 1
     end
 
-    # Handle ellipses in arguments
-    tup[i:end] = [(isa(val, Expr) && val.head === :...) ?
-        val.args[1] : val for val in vals]
-
     # Set up identity arguments to pass to unmemoized function
-    identargs = Array(Any, (length(kws) > 0)+length(defaults)+length(vals))
+    identargs = Array(Any, (length(kws) > 0)+length(vals))
     i = (length(kws) > 0) + 1
-    for val in vcat(defaults, vals)
+    for val in vals
         if isa(val, Expr)
-            if val.head == :(=)
+            if val.head == :kw
                 val = val.args[1]
             end
             if isa(val, Expr) && val.head == :(::)
@@ -64,17 +75,17 @@ macro memoize(args...)
     end
     if length(kws) > 0
         identkws = map(kws) do kw
-            if kw.head == :(=)
+            if kw.head == :kw
                 key = kw.args[1]
                 if isa(key, Expr) && key.head == :(::)
                     key = key.args[1]
                 end
-                :($key=$key)
+                Expr(:kw, key, key)
             else
                 kw
             end
         end
-        identargs[1] = Expr(:keywords, identkws...)
+        identargs[1] = Expr(:parameters, identkws...)
     end
 
     # Generate function
