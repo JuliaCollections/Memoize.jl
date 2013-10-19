@@ -1,5 +1,7 @@
 # Memoize.jl
 
+[![Build Status](https://travis-ci.org/simonster/Memoize.jl.png?branch=master)](https://travis-ci.org/simonster/Memoize.jl)
+
 Easy memoization for Julia.
 
 ## Usage
