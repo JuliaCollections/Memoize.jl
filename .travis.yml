@@ -11,7 +11,5 @@ before_install:
     - git config --global user.name "Travis User"
     - git config --global user.email "travis@example.net"
 script:
-    - julia -e 'versioninfo(); Pkg.init()'
-    - mkdir -p ~/.julia/Memoize
-    - cp -R ./* ~/.julia/Memoize/
-    - julia ~/.julia/Memoize/test/runtests.jl
+    - julia -e 'versioninfo(); run(`ln -s $(pwd()) $(Pkg.dir("Memoize"))`); Pkg.pin("Memoize"); Pkg.resolve()'
+    - julia test/runtests.jl
