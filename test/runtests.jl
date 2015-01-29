@@ -151,17 +151,17 @@ run = 0
 	global run += 1
 	a
 end
-@test kw_ellipsis() == {}
+@test kw_ellipsis() == []
 @test run == 1
-@test kw_ellipsis() == {}
+@test kw_ellipsis() == []
 @test run == 1
-@test kw_ellipsis(a=1) == {(:a, 1)}
+@test kw_ellipsis(a=1) == Any[(:a, 1)]
 @test run == 2
-@test kw_ellipsis(a=1) == {(:a, 1)}
+@test kw_ellipsis(a=1) == Any[(:a, 1)]
 @test run == 2
-@test kw_ellipsis(a=1, b=2) == {(:a, 1), (:b, 2)}
+@test kw_ellipsis(a=1, b=2) == Any[(:a, 1), (:b, 2)]
 @test run == 3
-@test kw_ellipsis(a=1, b=2) == {(:a, 1), (:b, 2)}
+@test kw_ellipsis(a=1, b=2) == Any[(:a, 1), (:b, 2)]
 @test run == 3
 
 run = 0
