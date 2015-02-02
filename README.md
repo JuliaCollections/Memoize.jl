@@ -1,6 +1,6 @@
 # Memoize.jl
 
-[![Build Status](https://travis-ci.org/simonster/Memoize.jl.png?branch=master)](https://travis-ci.org/simonster/Memoize.jl)
+[![Build Status](https://travis-ci.org/simonster/Memoize.jl.png?branch=master)](https://travis-ci.org/simonster/Memoize.jl) [![Coverage Status](http://img.shields.io/coveralls/JuliaStats/Memoize.jl.svg)](https://coveralls.io/r/JuliaStats/Memoize.jl)
 
 Easy memoization for Julia.
 
