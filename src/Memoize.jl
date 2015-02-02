@@ -21,7 +21,7 @@ macro memoize(args...)
     args = ex.args[1].args[2:end]
 
     # Extract keywords from AST
-    kws = []
+    kws = Any[]
     vals = copy(args)
     if length(vals) > 0 && isa(vals[1], Expr) && vals[1].head == :parameters
         kws = shift!(vals).args
