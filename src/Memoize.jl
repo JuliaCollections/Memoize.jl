@@ -17,7 +17,7 @@ macro memoize(args...)
         error("@memoize must be applied to a method definition")
     end
     f = ex.args[1].args[1]
-    ex.args[1].args[1] = u = @compat(Symbol(string(f,"_unmemoized")))
+    ex.args[1].args[1] = u = @compat(Symbol("##",f,"_unmemoized"))
 
     args = ex.args[1].args[2:end]
 
@@ -85,38 +85,24 @@ macro memoize(args...)
         identargs[1] = Expr(:parameters, identkws...)
     end
 
-    # Generate function
-    # This construction is bizarre, but it was the only thing I could devise
-    # that passes the tests included with this package and also frees the cache
-    # when a function is reloaded. Improvements are welcome.
-    quote
-        $(esc(ex))
-        isdef = false
-        try
-            $(esc(f))
-            isdef = true
-        end
-        if isdef
-            for i = 1
-                $(esc(quote
-                    local fcache
-                    const fcache = ($dicttype)()
-                    $(f)($(args...),) = 
-                        haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
-                        (fcache[($(tup...),)] = $(u)($(identargs...),))
-                end))
-            end
-        else
-            $(esc(quote
-                const $(f) = let
-                    local fcache, $f
-                    const fcache = ($dicttype)()
-                    $(f)($(args...),) = 
-                        haskey(fcache, ($(tup...),)) ? fcache[($(tup...),)] :
-                        (fcache[($(tup...),)] = $(u)($(identargs...),))
-                end
-            end))
-        end
+    fcachename = Symbol("##",f,"_memoized_cache")
+    mod = current_module()
+    fcache = isdefined(mod, fcachename) ?
+             getfield(mod, fcachename):
+             eval(mod, :(const $fcachename = ($dicttype)()))
+
+    if length(kws) == 0 && VERSION >= v"0.5.0-dev+5235"
+        lookup = :($fcache[($(tup...),)]::Core.Inference.return_type($u, typeof(($(identargs...),))))
+    else
+        lookup = :($fcache[($(tup...),)])
     end
+
+    esc(quote
+        $ex
+        empty!($fcache)
+        $f($(args...),) = 
+            haskey($fcache, ($(tup...),)) ? $lookup :
+            ($fcache[($(tup...),)] = $u($(identargs...),))
+    end)
 end
 end
