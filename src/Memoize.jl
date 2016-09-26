@@ -1,6 +1,5 @@
 module Memoize
 export @memoize
-using Compat
 
 macro memoize(args...)
     if length(args) == 1
@@ -12,12 +11,12 @@ macro memoize(args...)
         error("Memoize accepts at most two arguments")
     end
 
-    if !isa(ex,Expr) || (ex.head != :function && ex.head != @compat(Symbol("="))) ||
+    if !isa(ex,Expr) || (ex.head != :function && ex.head != Symbol("=")) ||
        isempty(ex.args) || ex.args[1].head != :call || isempty(ex.args[1].args)
         error("@memoize must be applied to a method definition")
     end
     f = ex.args[1].args[1]
-    ex.args[1].args[1] = u = @compat(Symbol("##",f,"_unmemoized"))
+    ex.args[1].args[1] = u = Symbol("##",f,"_unmemoized")
 
     args = ex.args[1].args[2:end]
 
