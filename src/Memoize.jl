@@ -1,5 +1,6 @@
 module Memoize
 export @memoize
+using Compat
 
 macro memoize(args...)
     if length(args) == 1
