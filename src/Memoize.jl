@@ -29,7 +29,7 @@ macro memoize(args...)
     end
 
     # Set up arguments for tuple to encode keywords
-    tup = Array(Any, length(kws)+length(vals))
+    tup = Array{Any}(length(kws)+length(vals))
     i = 1
     for val in vals
         tup[i] = if isa(val, Expr)
@@ -56,7 +56,7 @@ macro memoize(args...)
     end
 
     # Set up identity arguments to pass to unmemoized function
-    identargs = Array(Any, (length(kws) > 0)+length(vals))
+    identargs = Array{Any}((length(kws) > 0)+length(vals))
     i = (length(kws) > 0) + 1
     for val in vals
         if isa(val, Expr)
@@ -100,7 +100,7 @@ macro memoize(args...)
     esc(quote
         $ex
         empty!($fcache)
-        $f($(args...),) = 
+        $f($(args...),) =
             haskey($fcache, ($(tup...),)) ? $lookup :
             ($fcache[($(tup...),)] = $u($(identargs...),))
     end)
