@@ -12,7 +12,9 @@ macro memoize(args...)
         error("Memoize accepts at most two arguments")
     end
 
+    rettype = :nothin
     if ex.args[1].head == :(::)
+        rettype = ex.args[1].args[2]
         ex.args[1] = ex.args[1].args[1]
     end
 
@@ -101,12 +103,23 @@ macro memoize(args...)
         lookup = :($fcache[($(tup...),)])
     end
 
-    esc(quote
-        $ex
-        empty!($fcache)
-        $f($(args...),) =
-            haskey($fcache, ($(tup...),)) ? $lookup :
-            ($fcache[($(tup...),)] = $u($(identargs...),))
-    end)
+    if rettype == :nothin
+        esc(quote
+            $ex
+            empty!($fcache)
+            $f($(args...),) =
+                haskey($fcache, ($(tup...),)) ? $lookup :
+                ($fcache[($(tup...),)] = $u($(identargs...),))
+        end)
+    else
+        esc(quote
+            $ex
+            empty!($fcache)
+            $f($(args...),)::$rettype =
+                haskey($fcache, ($(tup...),)) ? $lookup :
+                ($fcache[($(tup...),)] = $u($(identargs...),))
+        end)
+    end
+
 end
 end
