@@ -13,9 +13,9 @@ macro memoize(args...)
     end
 
     if ex.args[1].head == :(::)
-      error("@memoize does not yet support return types")
+        ex.args[1] = ex.args[1].args[1]
     end
-    
+
     if !isa(ex,Expr) || (ex.head != :function && ex.head != Symbol("=")) ||
        isempty(ex.args) || ex.args[1].head != :call || isempty(ex.args[1].args)
         error("@memoize must be applied to a method definition")
