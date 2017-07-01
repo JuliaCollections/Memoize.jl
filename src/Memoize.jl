@@ -11,13 +11,14 @@ macro memoize(args...)
     else
         error("Memoize accepts at most two arguments")
     end
-
-    rettype = :nothin
+    # a return type declaration of Any is a No-op because everything is <: Any
+    rettype = Any
+    # if the return type is provided we need to strip it out and put it back later
     if ex.args[1].head == :(::)
         rettype = ex.args[1].args[2]
         ex.args[1] = ex.args[1].args[1]
     end
-
+    # error handling for expressions that are not method definitions
     if !isa(ex,Expr) || (ex.head != :function && ex.head != Symbol("=")) ||
        isempty(ex.args) || ex.args[1].head != :call || isempty(ex.args[1].args)
         error("@memoize must be applied to a method definition")
@@ -103,23 +104,13 @@ macro memoize(args...)
         lookup = :($fcache[($(tup...),)])
     end
 
-    if rettype == :nothin
-        esc(quote
-            $ex
-            empty!($fcache)
-            $f($(args...),) =
-                haskey($fcache, ($(tup...),)) ? $lookup :
-                ($fcache[($(tup...),)] = $u($(identargs...),))
-        end)
-    else
-        esc(quote
-            $ex
-            empty!($fcache)
-            $f($(args...),)::$rettype =
-                haskey($fcache, ($(tup...),)) ? $lookup :
-                ($fcache[($(tup...),)] = $u($(identargs...),))
-        end)
-    end
+    esc(quote
+        $ex
+        empty!($fcache)
+        $f($(args...),)::$rettype =
+            haskey($fcache, ($(tup...),)) ? $lookup :
+            ($fcache[($(tup...),)] = $u($(identargs...),))
+    end)
 
 end
 end
