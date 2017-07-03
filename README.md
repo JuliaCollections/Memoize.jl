@@ -32,7 +32,3 @@ using Memoize
 	a
 end
 ```
-
-## Implementation notes
-
-- Type inference will not work for memoized functions. If performance is critical, consider annotating the type of the output of the memoized function.
