@@ -1,5 +1,17 @@
 using Memoize, Base.Test
 
+# you can't use test_throws in macros
+arun = 0
+@memoize function memadd(x::Int, y::Int)::Int
+    global arun += 1
+    print("evaluating memadd $x $y\n")
+    return x + y
+end
+@test memadd(1,2) == 3
+@test memadd(1,4) == 5
+@test memadd(1,2) == 3
+@test arun == 2
+
 run = 0
 @memoize function simple(a)
     global run += 1
