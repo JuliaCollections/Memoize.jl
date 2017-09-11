@@ -106,7 +106,7 @@ macro memoize(args...)
     esc(quote
         $ex
         empty!($fcache)
-        $f($(args...),)::$rettype =
+        Base.@__doc__ $f($(args...),)::$rettype =
             haskey($fcache, ($(tup...),)) ? $lookup :
             ($fcache[($(tup...),)] = $u($(identargs...),))
     end)
