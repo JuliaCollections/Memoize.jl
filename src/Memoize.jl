@@ -92,9 +92,9 @@ macro memoize(args...)
     end
 
     fcachename = Symbol("##",f,"_memoized_cache")
-    mod = current_module()
+    mod = VERSION <= v"0.7.0-DEV" ? current_module() : __module__
     fcache = isdefined(mod, fcachename) ?
-             getfield(mod, fcachename):
+             getfield(mod, fcachename) :
              eval(mod, :(const $fcachename = ($dicttype)()))
 
     if length(kws) == 0 && VERSION >= v"0.5.0-dev+5235"
