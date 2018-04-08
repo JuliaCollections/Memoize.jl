@@ -198,6 +198,16 @@ end
 @test multiple_dispatch(1.0) == 2
 @test run == 2
 
+run = 0
+@memoize function where_clause(a::T) where T
+    global run += 1
+    T
+end
+@test where_clause(1) == Int
+@test run == 1
+@test where_clause(1) == Int
+@test run == 1
+
 function outer()
     run = 0
     @memoize function inner(x)
