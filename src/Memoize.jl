@@ -1,4 +1,5 @@
 module Memoize
+using MacroTools: splitdef, combinedef, splitarg
 export @memoize
 
 macro memoize(args...)
@@ -10,85 +11,39 @@ macro memoize(args...)
     else
         error("Memoize accepts at most two arguments")
     end
-    # a return type declaration of Any is a No-op because everything is <: Any
-    rettype = Any
-    # if the return type is provided we need to strip it out and put it back later
-    if ex.args[1].head == :(::)
-        rettype = ex.args[1].args[2]
-        ex.args[1] = ex.args[1].args[1]
-    end
-    # error handling for expressions that are not method definitions
-    if !isa(ex,Expr) || (ex.head != :function && ex.head != Symbol("=")) ||
-       isempty(ex.args) || ex.args[1].head != :call || isempty(ex.args[1].args)
+    
+    def_dict = try
+        splitdef(ex)
+    catch
         error("@memoize must be applied to a method definition")
     end
-    f = ex.args[1].args[1]
-    ex.args[1].args[1] = u = Symbol("##",f,"_unmemoized")
+    # a return type declaration of Any is a No-op because everything is <: Any
+    rettype = get(def_dict, :rtype, Any)
+    f = def_dict[:name]
+    def_dict_unmemoized = copy(def_dict)
+    def_dict_unmemoized[:name] = u = Symbol("##",f,"_unmemoized")
 
-    args = ex.args[1].args[2:end]
-
-    # Extract keywords from AST
-    kws = Any[]
-    vals = copy(args)
-    if length(vals) > 0 && isa(vals[1], Expr) && vals[1].head == :parameters
-        kws = shift!(vals).args
-    end
-
-    # Set up arguments for tuple to encode keywords
-    tup = Array{Any}(length(kws)+length(vals))
-    i = 1
-    for val in vals
-        tup[i] = if isa(val, Expr)
-                if val.head == :... || val.head == :kw
-                    val.args[1]
-                elseif val.head == :(::)
-                    val
-                else
-                    error("@memoize did not understand method syntax $val")
-                end
-            else
-                val
-            end
-        i += 1
-    end
-
-    for kw in kws
-        if isa(kw, Expr) && (kw.head == :kw || kw.head == :...)
-            tup[i] = kw.args[1]
-        else
-            error("@memoize did not understand method syntax")
-        end
-        i += 1
-    end
+    args = def_dict[:args]
+    kws = def_dict[:kwargs]
+    # Set up arguments for tuple
+    tup = [splitarg(arg)[1] for arg in vcat(args, kws)]
 
     # Set up identity arguments to pass to unmemoized function
-    identargs = Array{Any}((length(kws) > 0)+length(vals))
-    i = (length(kws) > 0) + 1
-    for val in vals
-        if isa(val, Expr)
-            if val.head == :kw
-                val = val.args[1]
-            end
-            if isa(val, Expr) && val.head == :(::)
-                val = val.args[1]
-            end
+    identargs = map(args) do arg
+        arg_name, typ, slurp, default = splitarg(arg)
+        if slurp
+            Expr(:..., arg_name)
+        else
+            arg_name
         end
-        identargs[i] = val
-        i += 1
     end
-    if length(kws) > 0
-        identkws = map(kws) do kw
-            if kw.head == :kw
-                key = kw.args[1]
-                if isa(key, Expr) && key.head == :(::)
-                    key = key.args[1]
-                end
-                Expr(:kw, key, key)
-            else
-                kw
-            end
+    identkws = map(kws) do kw
+        arg_name, typ, slurp, default = splitarg(kw)
+        if slurp
+            Expr(:..., arg_name)
+        else
+            Expr(:kw, arg_name, arg_name)
         end
-        identargs[1] = Expr(:parameters, identkws...)
     end
 
     fcachename = Symbol("##",f,"_memoized_cache")
@@ -103,13 +58,15 @@ macro memoize(args...)
         lookup = :($fcache[($(tup...),)])
     end
 
+    def_dict[:body] = quote
+        haskey($fcache, ($(tup...),)) ? $lookup :
+        ($fcache[($(tup...),)] = $u($(identargs...),; $(identkws...)))
+    end
     esc(quote
-        $ex
+        $(combinedef(def_dict_unmemoized))
         empty!($fcache)
-        $f($(args...),)::$rettype =
-            haskey($fcache, ($(tup...),)) ? $lookup :
-            ($fcache[($(tup...),)] = $u($(identargs...),))
+        $(combinedef(def_dict))
     end)
-
+    
 end
 end
