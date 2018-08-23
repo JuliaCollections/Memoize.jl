@@ -97,10 +97,8 @@ macro memoize(args...)
              getfield(mod, fcachename) :
              Core.eval(mod, :(const $fcachename = ($dicttype)()))
 
-    if length(kws) == 0 && VERSION >= v"0.7.0-alpha.0"
+    if length(kws) == 0
         lookup = :($fcache[($(tup...),)]::Core.Compiler.return_type($u, typeof(($(identargs...),))))
-    elseif length(kws) == 0 && VERSION >= v"0.5.0-dev+5235"
-        lookup = :($fcache[($(tup...),)]::Core.Inference.return_type($u, typeof(($(identargs...),))))
     else
         lookup = :($fcache[($(tup...),)])
     end

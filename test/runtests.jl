@@ -163,33 +163,18 @@ run = 0
     global run += 1
     a
 end
-if VERSION >= v"0.7.0-alpha" # PR #24795
-    @test isempty(kw_ellipsis())
-    @test run == 1
-    @test isempty(kw_ellipsis())
-    @test run == 1
-    @test kw_ellipsis(a=1) == pairs((a=1,))
-    @test run == 2
-    @test kw_ellipsis(a=1) == pairs((a=1,))
-    @test run == 2
-    @test kw_ellipsis(a=1, b=2) == pairs((a=1,b=2))
-    @test run == 3
-    @test kw_ellipsis(a=1, b=2) == pairs((a=1,b=2))
-    @test run == 3
-else
-    @test kw_ellipsis() == []
-    @test run == 1
-    @test kw_ellipsis() == []
-    @test run == 1
-    @test kw_ellipsis(a=1) == Any[(:a, 1)]
-    @test run == 2
-    @test kw_ellipsis(a=1) == Any[(:a, 1)]
-    @test run == 2
-    @test kw_ellipsis(a=1, b=2) == Any[(:a, 1), (:b, 2)]
-    @test run == 3
-    @test kw_ellipsis(a=1, b=2) == Any[(:a, 1), (:b, 2)]
-    @test run == 3
-end
+@test isempty(kw_ellipsis())
+@test run == 1
+@test isempty(kw_ellipsis())
+@test run == 1
+@test kw_ellipsis(a=1) == pairs((a=1,))
+@test run == 2
+@test kw_ellipsis(a=1) == pairs((a=1,))
+@test run == 2
+@test kw_ellipsis(a=1, b=2) == pairs((a=1,b=2))
+@test run == 3
+@test kw_ellipsis(a=1, b=2) == pairs((a=1,b=2))
+@test run == 3
 
 run = 0
 @memoize function multiple_dispatch(a::Int)
