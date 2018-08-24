@@ -220,13 +220,11 @@ end
 outer()
 @test !@isdefined inner
 
-if VERSION >= v"0.5.0-dev+5235"
-    @memoize function typeinf(x)
-        x + 1
-    end
-    @inferred typeinf(1)
-    @inferred typeinf(1.0)
+@memoize function typeinf(x)
+    x + 1
 end
+@inferred typeinf(1)
+@inferred typeinf(1.0)
 
 println("The following method rewrite warnings are normal")
 finalized = false
