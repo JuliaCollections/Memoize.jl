@@ -3,7 +3,7 @@ export @memoize
 
 macro memoize(args...)
     if length(args) == 1
-        dicttype = :(ObjectIdDict)
+        dicttype = :(IdDict)
         ex = args[1]
     elseif length(args) == 2
         (dicttype, ex) = args
@@ -31,11 +31,11 @@ macro memoize(args...)
     kws = Any[]
     vals = copy(args)
     if length(vals) > 0 && isa(vals[1], Expr) && vals[1].head == :parameters
-        kws = shift!(vals).args
+        kws = popfirst!(vals).args
     end
 
     # Set up arguments for tuple to encode keywords
-    tup = Array{Any}(length(kws)+length(vals))
+    tup = Array{Any}(undef,length(kws)+length(vals))
     i = 1
     for val in vals
         tup[i] = if isa(val, Expr)
@@ -62,7 +62,7 @@ macro memoize(args...)
     end
 
     # Set up identity arguments to pass to unmemoized function
-    identargs = Array{Any}((length(kws) > 0)+length(vals))
+    identargs = Array{Any}(undef,(length(kws) > 0)+length(vals))
     i = (length(kws) > 0) + 1
     for val in vals
         if isa(val, Expr)
@@ -92,13 +92,13 @@ macro memoize(args...)
     end
 
     fcachename = Symbol("##",f,"_memoized_cache")
-    mod = current_module()
+    mod = @__MODULE__
     fcache = isdefined(mod, fcachename) ?
-             getfield(mod, fcachename):
-             eval(mod, :(const $fcachename = ($dicttype)()))
+             getfield(mod, fcachename) :
+             Core.eval(mod, :(const $fcachename = ($dicttype)()))
 
-    if length(kws) == 0 && VERSION >= v"0.5.0-dev+5235"
-        lookup = :($fcache[($(tup...),)]::Core.Inference.return_type($u, typeof(($(identargs...),))))
+    if length(kws) == 0
+        lookup = :($fcache[($(tup...),)]::Core.Compiler.return_type($u, typeof(($(identargs...),))))
     else
         lookup = :($fcache[($(tup...),)])
     end

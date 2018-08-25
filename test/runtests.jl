@@ -1,4 +1,4 @@
-using Memoize, Base.Test
+using Memoize, Test
 
 # you can't use test_throws in macros
 arun = 0
@@ -163,17 +163,17 @@ run = 0
     global run += 1
     a
 end
-@test kw_ellipsis() == []
+@test isempty(kw_ellipsis())
 @test run == 1
-@test kw_ellipsis() == []
+@test isempty(kw_ellipsis())
 @test run == 1
-@test kw_ellipsis(a=1) == Any[(:a, 1)]
+@test kw_ellipsis(a=1) == pairs((a=1,))
 @test run == 2
-@test kw_ellipsis(a=1) == Any[(:a, 1)]
+@test kw_ellipsis(a=1) == pairs((a=1,))
 @test run == 2
-@test kw_ellipsis(a=1, b=2) == Any[(:a, 1), (:b, 2)]
+@test kw_ellipsis(a=1, b=2) == pairs((a=1,b=2))
 @test run == 3
-@test kw_ellipsis(a=1, b=2) == Any[(:a, 1), (:b, 2)]
+@test kw_ellipsis(a=1, b=2) == pairs((a=1,b=2))
 @test run == 3
 
 run = 0
@@ -218,24 +218,22 @@ function outer()
     @test run == 3
 end
 outer()
-@test !isdefined(:inner)
+@test !@isdefined inner
 
-if VERSION >= v"0.5.0-dev+5235"
-    @memoize function typeinf(x)
-        x + 1
-    end
-    @inferred typeinf(1)
-    @inferred typeinf(1.0)
+@memoize function typeinf(x)
+    x + 1
 end
+@inferred typeinf(1)
+@inferred typeinf(1.0)
 
 println("The following method rewrite warnings are normal")
 finalized = false
 @memoize function method_rewrite()
     x = []
-    finalizer(x, x->(global finalized; finalized = true))
+    finalizer(x->(global finalized; finalized = true),x)
     x
 end
 method_rewrite()
 @memoize function method_rewrite() end
-gc()
+GC.gc()
 @test finalized
