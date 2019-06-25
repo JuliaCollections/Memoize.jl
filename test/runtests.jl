@@ -1,5 +1,9 @@
 using Memoize, Test
 
+@test_throws LoadError eval(:(@memoize))
+@test_throws LoadError eval(:(@memoize () = ()))
+@test_throws LoadError eval(:(@memoize foo(; bar) = "baz"))
+
 # you can't use test_throws in macros
 arun = 0
 @memoize function memadd(x::Int, y::Int)::Int
