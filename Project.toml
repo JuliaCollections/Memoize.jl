@@ -1,5 +1,5 @@
 name = "Memoize"
-uuid = "0fb7230c-a6dd-11e8-35c5-25eda89965fd"
+uuid = "c03570c3-d221-55d1-a50c-7939bbd78826"
 authors = ["Simon Kornblith <simon@simonster.com>"]
 version = "0.3.0"
 
