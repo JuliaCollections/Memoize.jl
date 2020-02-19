@@ -2,7 +2,6 @@ using Memoize, Test
 
 @test_throws LoadError eval(:(@memoize))
 @test_throws LoadError eval(:(@memoize () = ()))
-@test_throws LoadError eval(:(@memoize foo(; bar) = "baz"))
 
 # you can't use test_throws in macros
 arun = 0
@@ -147,6 +146,21 @@ end
 @test run == 3
 @test default_kw_typed(2, b=3) == (2, 3)
 @test run == 3
+
+run = 0
+@memoize function required_kw(; a)
+    global run += 1
+    a
+end
+@test required_kw(a=1) == 1
+@test run == 1
+@test required_kw(a=1) == 1
+@test run == 1
+@test required_kw(a=2) == 2
+@test run == 2
+@test required_kw(a=2) == 2
+@test run == 2
+@test_throws UndefKeywordError required_kw()
 
 run = 0
 @memoize function ellipsis(a, b...)
