@@ -254,7 +254,6 @@ end
 @inferred typeinf(1)
 @inferred typeinf(1.0)
 
-println("The following method rewrite warnings are normal")
 finalized = false
 @memoize function method_rewrite()
     x = []
