@@ -251,3 +251,19 @@ method_rewrite()
 @memoize function method_rewrite() end
 GC.gc()
 @test finalized
+
+run = 0
+""" documented function """
+@memoize function documented_function(a)
+    global run += 1
+    a
+end
+@test strip(string(@doc documented_function)) == "documented function"
+@test documented_function(1) == 1
+@test run == 1
+@test documented_function(1) == 1
+@test run == 1
+@test documented_function(2) == 2
+@test run == 2
+@test documented_function(2) == 2
+@test run == 2
