@@ -1,7 +1,7 @@
 name = "Memoize"
 uuid = "c03570c3-d221-55d1-a50c-7939bbd78826"
 authors = ["Simon Kornblith <simon@simonster.com>"]
-version = "0.4.1"
+version = "0.4.0"
 
 [deps]
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
