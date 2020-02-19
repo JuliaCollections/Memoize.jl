@@ -46,10 +46,7 @@ macro memoize(args...)
         end
     end
 
-    fcachename = Symbol("##", f, "_memoized_cache")
-    fcache = isdefined(Main, fcachename) ?
-             getfield(Main, fcachename) :
-             Core.eval(Main, :(const $fcachename = ($dicttype)()))
+    fcache = gensym(f)
 
     if length(kws) == 0
         lookup = :($fcache[($(tup...),)]::Core.Compiler.return_type($u, typeof(($(identargs...),))))
@@ -61,9 +58,10 @@ macro memoize(args...)
         haskey($fcache, ($(tup...),)) ? $lookup :
         ($fcache[($(tup...),)] = $u($(identargs...),; $(identkws...)))
     end
+
     esc(quote
+        global $fcache = ($dicttype)()
         $(combinedef(def_dict_unmemoized))
-        empty!($fcache)
         Base.@__doc__ $(combinedef(def_dict))
     end)
 
