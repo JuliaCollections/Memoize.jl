@@ -10,9 +10,9 @@ arun = 0
     print("evaluating memadd $x $y\n")
     return x + y
 end
-@test memadd(1,2) == 3
-@test memadd(1,4) == 5
-@test memadd(1,2) == 3
+@test memadd(1, 2) == 3
+@test memadd(1, 4) == 5
+@test memadd(1, 2) == 3
 @test arun == 2
 
 run = 0
@@ -44,7 +44,7 @@ end
 @test run == 2
 
 run = 0
-@memoize function default(a=2)
+@memoize function default(a = 2)
     global run += 1
     a
 end
@@ -60,7 +60,7 @@ end
 @test run == 2
 
 run = 0
-@memoize function default_typed(a::Int=2)
+@memoize function default_typed(a::Int = 2)
     global run += 1
     a
 end
@@ -76,7 +76,7 @@ end
 @test run == 2
 
 run = 0
-@memoize function kw(; a=2)
+@memoize function kw(; a = 2)
     global run += 1
     a
 end
@@ -84,15 +84,15 @@ end
 @test run == 1
 @test kw() == 2
 @test run == 1
-@test kw(a=2) == 2
+@test kw(a = 2) == 2
 @test run == 1
-@test kw(a=6) == 6
+@test kw(a = 6) == 6
 @test run == 2
-@test kw(a=6) == 6
+@test kw(a = 6) == 6
 @test run == 2
 
 run = 0
-@memoize function kw_typed(; a::Int=2)
+@memoize function kw_typed(; a::Int = 2)
     global run += 1
     a
 end
@@ -100,15 +100,15 @@ end
 @test run == 1
 @test kw_typed() == 2
 @test run == 1
-@test kw_typed(a=2) == 2
+@test kw_typed(a = 2) == 2
 @test run == 1
-@test kw_typed(a=6) == 6
+@test kw_typed(a = 6) == 6
 @test run == 2
-@test kw_typed(a=6) == 6
+@test kw_typed(a = 6) == 6
 @test run == 2
 
 run = 0
-@memoize function default_kw(a=1; b=2)
+@memoize function default_kw(a = 1; b = 2)
     global run += 1
     (a, b)
 end
@@ -116,19 +116,19 @@ end
 @test run == 1
 @test default_kw() == (1, 2)
 @test run == 1
-@test default_kw(1, b=2) == (1, 2)
+@test default_kw(1, b = 2) == (1, 2)
 @test run == 1
-@test default_kw(1, b=3) == (1, 3)
+@test default_kw(1, b = 3) == (1, 3)
 @test run == 2
-@test default_kw(1, b=3) == (1, 3)
+@test default_kw(1, b = 3) == (1, 3)
 @test run == 2
-@test default_kw(2, b=3) == (2, 3)
+@test default_kw(2, b = 3) == (2, 3)
 @test run == 3
-@test default_kw(2, b=3) == (2, 3)
+@test default_kw(2, b = 3) == (2, 3)
 @test run == 3
 
 run = 0
-@memoize function default_kw_typed(a::Int=1; b::Int=2)
+@memoize function default_kw_typed(a::Int = 1; b::Int = 2)
     global run += 1
     (a, b)
 end
@@ -136,15 +136,15 @@ end
 @test run == 1
 @test default_kw_typed() == (1, 2)
 @test run == 1
-@test default_kw_typed(1, b=2) == (1, 2)
+@test default_kw_typed(1, b = 2) == (1, 2)
 @test run == 1
-@test default_kw_typed(1, b=3) == (1, 3)
+@test default_kw_typed(1, b = 3) == (1, 3)
 @test run == 2
-@test default_kw_typed(1, b=3) == (1, 3)
+@test default_kw_typed(1, b = 3) == (1, 3)
 @test run == 2
-@test default_kw_typed(2, b=3) == (2, 3)
+@test default_kw_typed(2, b = 3) == (2, 3)
 @test run == 3
-@test default_kw_typed(2, b=3) == (2, 3)
+@test default_kw_typed(2, b = 3) == (2, 3)
 @test run == 3
 
 run = 0
@@ -152,13 +152,13 @@ run = 0
     global run += 1
     a
 end
-@test required_kw(a=1) == 1
+@test required_kw(a = 1) == 1
 @test run == 1
-@test required_kw(a=1) == 1
+@test required_kw(a = 1) == 1
 @test run == 1
-@test required_kw(a=2) == 2
+@test required_kw(a = 2) == 2
 @test run == 2
-@test required_kw(a=2) == 2
+@test required_kw(a = 2) == 2
 @test run == 2
 @test_throws UndefKeywordError required_kw()
 
@@ -185,13 +185,13 @@ end
 @test run == 1
 @test isempty(kw_ellipsis())
 @test run == 1
-@test kw_ellipsis(a=1) == pairs((a=1,))
+@test kw_ellipsis(a = 1) == pairs((a = 1,))
 @test run == 2
-@test kw_ellipsis(a=1) == pairs((a=1,))
+@test kw_ellipsis(a = 1) == pairs((a = 1,))
 @test run == 2
-@test kw_ellipsis(a=1, b=2) == pairs((a=1,b=2))
+@test kw_ellipsis(a = 1, b = 2) == pairs((a = 1, b = 2))
 @test run == 3
-@test kw_ellipsis(a=1, b=2) == pairs((a=1,b=2))
+@test kw_ellipsis(a = 1, b = 2) == pairs((a = 1, b = 2))
 @test run == 3
 
 run = 0
@@ -230,7 +230,7 @@ function outer()
     end
     @memoize function inner(x, y)
         run += 1
-        x+y
+        x + y
     end
     @test inner(5) == 5
     @test run == 1
@@ -257,7 +257,7 @@ end
 finalized = false
 @memoize function method_rewrite()
     x = []
-    finalizer(x->(global finalized; finalized = true),x)
+    finalizer(x->(global finalized; finalized = true), x)
     x
 end
 method_rewrite()
@@ -280,3 +280,31 @@ end
 @test run == 2
 @test documented_function(2) == 2
 @test run == 2
+
+
+module MemoizeTest
+using Test
+using Memoize
+
+const MyDict = Dict
+
+println(MemoizeTest)
+
+run = 0
+@memoize MyDict function custom_dict(a)
+    global run += 1
+    a
+end
+@test custom_dict(1) == 1
+@test run == 1
+@test custom_dict(1) == 1
+@test run == 1
+@test custom_dict(2) == 2
+@test run == 2
+@test custom_dict(2) == 2
+@test run == 2
+@test custom_dict(1) == 1
+@test run == 2
+
+end
+
