@@ -47,10 +47,9 @@ macro memoize(args...)
     end
 
     fcachename = Symbol("##", f, "_memoized_cache")
-    mod = @__MODULE__
-    fcache = isdefined(mod, fcachename) ?
-             getfield(mod, fcachename) :
-             Core.eval(mod, :(const $fcachename = ($dicttype)()))
+    fcache = isdefined(Main, fcachename) ?
+             getfield(Main, fcachename) :
+             Core.eval(Main, :(const $fcachename = ($dicttype)()))
 
     if length(kws) == 0
         lookup = :($fcache[($(tup...),)]::Core.Compiler.return_type($u, typeof(($(identargs...),))))
