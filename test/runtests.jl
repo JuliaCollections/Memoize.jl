@@ -2,7 +2,6 @@ using Memoize, Test
 
 @test_throws LoadError eval(:(@memoize))
 @test_throws LoadError eval(:(@memoize () = ()))
-@test_throws LoadError eval(:(@memoize foo(; bar) = "baz"))
 
 # you can't use test_throws in macros
 arun = 0
@@ -149,6 +148,21 @@ end
 @test run == 3
 
 run = 0
+@memoize function required_kw(; a)
+    global run += 1
+    a
+end
+@test required_kw(a=1) == 1
+@test run == 1
+@test required_kw(a=1) == 1
+@test run == 1
+@test required_kw(a=2) == 2
+@test run == 2
+@test required_kw(a=2) == 2
+@test run == 2
+@test_throws UndefKeywordError required_kw()
+
+run = 0
 @memoize function ellipsis(a, b...)
     global run += 1
     (a, b)
@@ -198,6 +212,16 @@ end
 @test multiple_dispatch(1.0) == 2
 @test run == 2
 
+run = 0
+@memoize function where_clause(a::T) where T
+    global run += 1
+    T
+end
+@test where_clause(1) == Int
+@test run == 1
+@test where_clause(1) == Int
+@test run == 1
+
 function outer()
     run = 0
     @memoize function inner(x)
@@ -230,7 +254,6 @@ end
 @inferred typeinf(1)
 @inferred typeinf(1.0)
 
-println("The following method rewrite warnings are normal")
 finalized = false
 @memoize function method_rewrite()
     x = []
@@ -241,3 +264,19 @@ method_rewrite()
 @memoize function method_rewrite() end
 GC.gc()
 @test finalized
+
+run = 0
+""" documented function """
+@memoize function documented_function(a)
+    global run += 1
+    a
+end
+@test strip(string(@doc documented_function)) == "documented function"
+@test documented_function(1) == 1
+@test run == 1
+@test documented_function(1) == 1
+@test run == 1
+@test documented_function(2) == 2
+@test run == 2
+@test documented_function(2) == 2
+@test run == 2
