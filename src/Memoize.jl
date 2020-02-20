@@ -1,5 +1,5 @@
 module Memoize
-using MacroTools: splitdef, combinedef, splitarg
+using MacroTools: combinedef, namify, splitarg, splitdef
 export @memoize
 
 macro memoize(args...)
@@ -31,7 +31,7 @@ macro memoize(args...)
     # Set up identity arguments to pass to unmemoized function
     identargs = map(args) do arg
         arg_name, typ, slurp, default = splitarg(arg)
-        if slurp
+        if slurp || namify(typ) === :Vararg
             Expr(:..., arg_name)
         else
             arg_name
