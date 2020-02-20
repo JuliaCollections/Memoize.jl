@@ -281,6 +281,20 @@ end
 @test documented_function(2) == 2
 @test run == 2
 
+run = 0
+@memoize function vararg_func(list::Vararg{Tuple{Int64,Int64}})
+    global run += 1
+    return list[1]
+end
+@test vararg_func((1,1), (1,1)) == (1,1)
+@test run == 1
+@test vararg_func((1,1), (1,1)) == (1,1)
+@test run == 1
+@test vararg_func((1,1), (1,2)) == (1,1)
+@test run == 2
+@test vararg_func((1,1), (1,2)) == (1,1)
+@test run == 2
+
 
 module MemoizeTest
 using Test
@@ -306,3 +320,16 @@ end
 
 end
 
+run = 0
+@memoize Dict{Tuple{String},Int}() function dict_call(a::String)::Int
+    global run += 1
+    length(a)
+end
+@test dict_call("a") == 1
+@test run == 1
+@test dict_call("a") == 1
+@test run == 1
+@test dict_call("bb") == 2
+@test run == 2
+@test dict_call("bb") == 2
+@test run == 2

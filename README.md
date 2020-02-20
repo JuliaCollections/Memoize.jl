@@ -32,3 +32,38 @@ using Memoize
 	a
 end
 ```
+
+You can also specify the full function call for constructing the dictionary.  For example, to use LRUCache.jl:
+
+```julia
+using Memoize
+using LRUCache
+@memoize LRU{Tuple{Any,Any},Any}(maxsize=2) function x(a, b)
+    println("Running")
+    a + b
+end
+```
+
+```julia
+julia> x(1,2)
+Running
+3
+
+julia> x(1,2)
+3
+
+julia> x(2,2)
+Running
+4
+
+julia> x(2,3)
+Running
+5
+
+julia> x(1,2)
+Running
+3
+
+julia> x(2,3)
+5
+```
