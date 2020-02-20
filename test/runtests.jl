@@ -288,8 +288,6 @@ using Memoize
 
 const MyDict = Dict
 
-println(MemoizeTest)
-
 run = 0
 @memoize MyDict function custom_dict(a)
     global run += 1
