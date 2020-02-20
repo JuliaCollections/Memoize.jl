@@ -319,3 +319,17 @@ end
 @test run == 2
 
 end
+
+run = 0
+@memoize Dict{Tuple{String},Int}() function dict_call(a::String)::Int
+    global run += 1
+    length(a)
+end
+@test dict_call("a") == 1
+@test run == 1
+@test dict_call("a") == 1
+@test run == 1
+@test dict_call("bb") == 2
+@test run == 2
+@test dict_call("bb") == 2
+@test run == 2
