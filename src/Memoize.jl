@@ -1,5 +1,5 @@
 module Memoize
-using MacroTools: combinedef, namify, splitarg, splitdef
+using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
 export @memoize
 
 macro memoize(args...)
@@ -12,11 +12,14 @@ macro memoize(args...)
         error("Memoize accepts at most two arguments")
     end
 
+    cache_dict = isexpr(dicttype, :call) ? dicttype : :(($dicttype)())
+
     def_dict = try
         splitdef(ex)
     catch
         error("@memoize must be applied to a method definition")
     end
+
     # a return type declaration of Any is a No-op because everything is <: Any
     rettype = get(def_dict, :rtype, Any)
     f = def_dict[:name]
@@ -50,7 +53,7 @@ macro memoize(args...)
     mod = __module__
     fcache = isdefined(mod, fcachename) ?
              getfield(mod, fcachename) :
-             Core.eval(mod, :(const $fcachename = ($dicttype)()))
+             Core.eval(mod, :(const $fcachename = $cache_dict))
 
     if length(kws) == 0
         lookup = :($fcache[($(tup...),)]::Core.Compiler.return_type($u, typeof(($(identargs...),))))
