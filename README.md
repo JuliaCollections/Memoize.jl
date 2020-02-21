@@ -27,7 +27,7 @@ By default, Memoize.jl uses an `ObjectIdDict` as a cache, but it's also possible
 
 ```julia
 using Memoize
-@memoize Dict function x(a)
+@memoize Dict() function x(a)
 	println("Running")
 	a
 end
