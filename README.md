@@ -23,7 +23,7 @@ julia> x(1)
 1
 ```
 
-By default, Memoize.jl uses an `ObjectIdDict` as a cache, but it's also possible to specify the type of the cache. If you want to cache vectors based on the values they contain, you probably want this:
+By default, Memoize.jl uses an [`IdDict`](https://docs.julialang.org/en/v1/base/collections/#Base.IdDict) as a cache, but it's also possible to specify the type of the cache. If you want to cache vectors based on the values they contain, you probably want this:
 
 ```julia
 using Memoize
