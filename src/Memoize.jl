@@ -53,9 +53,6 @@ macro memoize(args...)
 
     fcachename = cache_name(f)
     mod = __module__
-    fcache = isdefined(mod, fcachename) ?
-             getfield(mod, fcachename) :
-             Core.eval(mod, :(const $fcachename = $cache_dict))
 
     body = quote
         get!($fcache, ($(tup...),)) do
@@ -72,8 +69,10 @@ macro memoize(args...)
     end
 
     esc(quote
+        $fcachename = $cache_dict  # this should be `const` for performance, but then this
+                                   # fails the local-function cache test.
         $(combinedef(def_dict_unmemoized))
-        empty!($fcache)
+        empty!($fcachename)
         Base.@__doc__ $(combinedef(def_dict))
     end)
 
