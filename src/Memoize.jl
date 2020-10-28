@@ -51,23 +51,22 @@ macro memoize(args...)
 
     fcachename = Symbol("##", f, "_memoized_cache")
     mod = __module__
-    fcache = isdefined(mod, fcachename) ?
-             getfield(mod, fcachename) :
-             Core.eval(mod, :(const $fcachename = $cache_dict))
 
     if length(kws) == 0
-        lookup = :($fcache[($(tup...),)]::Core.Compiler.return_type($u, typeof(($(identargs...),))))
+        lookup = :($fcachename[($(tup...),)]::Core.Compiler.return_type($u, typeof(($(identargs...),))))
     else
-        lookup = :($fcache[($(tup...),)])
+        lookup = :($fcachename[($(tup...),)])
     end
 
     def_dict[:body] = quote
-        haskey($fcache, ($(tup...),)) ? $lookup :
-        ($fcache[($(tup...),)] = $u($(identargs...),; $(identkws...)))
+        haskey($fcachename, ($(tup...),)) ? $lookup :
+        ($fcachename[($(tup...),)] = $u($(identargs...),; $(identkws...)))
     end
     esc(quote
+        $fcachename = $cache_dict  # this should be `const` for performance, but then this
+                                   # fails the local-function cache test.
         $(combinedef(def_dict_unmemoized))
-        empty!($fcache)
+        empty!($fcachename)
         Base.@__doc__ $(combinedef(def_dict))
     end)
 
