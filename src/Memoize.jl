@@ -55,16 +55,20 @@ macro memoize(args...)
              getfield(mod, fcachename) :
              Core.eval(mod, :(const $fcachename = $cache_dict))
 
-    if length(kws) == 0
-        lookup = :($fcache[($(tup...),)]::Core.Compiler.return_type($u, typeof(($(identargs...),))))
-    else
-        lookup = :($fcache[($(tup...),)])
+    body = quote
+        get!($fcache, ($(tup...),)) do
+            $u($(identargs...); $(identkws...))
+        end
     end
 
-    def_dict[:body] = quote
-        haskey($fcache, ($(tup...),)) ? $lookup :
-        ($fcache[($(tup...),)] = $u($(identargs...),; $(identkws...)))
+    if length(kws) == 0
+        def_dict[:body] = quote
+            $(body)::Core.Compiler.return_type($u, typeof(($(identargs...),)))
+        end
+    else
+        def_dict[:body] = body
     end
+
     esc(quote
         $(combinedef(def_dict_unmemoized))
         empty!($fcache)
