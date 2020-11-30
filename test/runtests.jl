@@ -32,6 +32,8 @@ end
 Memoize.@clear_cache(simple)
 @test simple(6) == 6
 @test run == 3
+@test simple(6) == 6
+@test run == 3
 
 run = 0
 @memoize function typed(a::Int)
