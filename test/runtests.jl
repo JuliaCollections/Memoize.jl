@@ -337,8 +337,3 @@ end
 @test run == 2
 @test dict_call("bb") == 2
 @test run == 2
-
-run = 0
-@memoize function increase()
-    global run += 1
-end
