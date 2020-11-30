@@ -80,7 +80,7 @@ end
 macro clear_cache(f)
     fcachename = Symbol("##", f, "_memoized_cache")
     esc(quote
-        Base.empty!(eval($fcachename))
+        Base.empty!($fcachename)
     end)
 end
 
