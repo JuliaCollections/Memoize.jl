@@ -29,6 +29,10 @@ end
 @test simple(6) == 6
 @test run == 2
 
+Memoize.@clear_cache(simple)
+@test simple(6) == 6
+@test run == 3
+
 run = 0
 @memoize function typed(a::Int)
     global run += 1
@@ -333,3 +337,8 @@ end
 @test run == 2
 @test dict_call("bb") == 2
 @test run == 2
+
+run = 0
+@memoize function increase()
+    global run += 1
+end

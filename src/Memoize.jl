@@ -76,4 +76,17 @@ macro memoize(args...)
     end)
 
 end
+
+macro clear_cache(f)
+    fcachename = Symbol("##", f, "_memoized_cache")
+    mod = __module__
+    fcache = getfield(mod, fcachename)
+
+    function clear_cache!(x::IdDict)
+        foreach(k -> delete!(fcache, k), keys(fcache))
+    end
+
+    Core.eval(mod, :($(clear_cache!(fcache))))
 end
+
+end # module
