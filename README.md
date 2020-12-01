@@ -1,6 +1,10 @@
 # Memoize.jl
 
-[![Build Status](https://travis-ci.org/JuliaCollections/Memoize.jl.png?branch=master)](https://travis-ci.org/JuliaCollections/Memoize.jl) [![Coverage Status](https://coveralls.io/repos/github/JuliaCollections/Memoize.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaCollections/Memoize.jl?branch=master)
+[![Build Status][ci-img]][ci-url]
+[![Coverage Status](https://coveralls.io/repos/github/JuliaCollections/Memoize.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaCollections/Memoize.jl?branch=master)
+
+[ci-img]: https://github.com/JuliaCollections/Memoize.jl/workflows/CI/badge.svg
+[ci-url]: https://github.com/JuliaCollections/Memoize.jl/actions
 
 Easy memoization for Julia.
 
