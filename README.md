@@ -19,14 +19,14 @@ julia> x(1)
 Running
 2
 
-julia> @memoize_cache(x)
+julia> memoize_cache(x)
 IdDict{Any,Any} with 1 entry:
   (1,) => 2
 
 julia> x(1)
 2
 
-julia> empty!(@memoize_cache(x))
+julia> empty!(memoize_cache(x))
 IdDict{Any,Any}()
 
 julia> x(1)

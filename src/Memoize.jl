@@ -1,6 +1,6 @@
 module Memoize
 using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
-export @memoize, @memoize_cache
+export @memoize, memoize_cache
 
 cache_name(f) = Symbol("##", f, "_memoized_cache")
 
@@ -79,17 +79,8 @@ macro memoize(args...)
 
 end
 
-function memoize_cache(m::Module, f::Function)
-    fmodulename = which(m, Symbol(f))
-    getproperty(fmodulename, cache_name(f))
+function memoize_cache(f::Function)
+    getproperty(parentmodule(f), cache_name(f))
 end
 
-macro memoize_cache(f)
-    m = __module__
-    f_symbol = :($f)
-    esc(quote
-        Memoize.memoize_cache($m, $f_symbol)
-    end)
 end
-
-end # module
