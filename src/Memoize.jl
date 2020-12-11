@@ -80,6 +80,9 @@ macro memoize(args...)
 end
 
 function memoize_cache(f::Function)
+    # This will fail in certain circumstances (eg. @memoize Base.sin(::MyNumberType) = ...) but I don't think there's 
+    # a clean answer here, because we can already have multiple caches for certain functions, if the methods are 
+    # defined in different modules.
     getproperty(parentmodule(f), cache_name(f))
 end
 
