@@ -1,6 +1,8 @@
 module Memoize
 using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
-export @memoize
+export @memoize, memoize_cache
+
+cache_name(f) = Symbol("##", f, "_memoized_cache")
 
 macro memoize(args...)
     if length(args) == 1
@@ -49,7 +51,7 @@ macro memoize(args...)
         end
     end
 
-    fcachename = Symbol("##", f, "_memoized_cache")
+    fcachename = cache_name(f)
     mod = __module__
     fcache = isdefined(mod, fcachename) ?
              getfield(mod, fcachename) :
@@ -76,4 +78,12 @@ macro memoize(args...)
     end)
 
 end
+
+function memoize_cache(f::Function)
+    # This will fail in certain circumstances (eg. @memoize Base.sin(::MyNumberType) = ...) but I don't think there's 
+    # a clean answer here, because we can already have multiple caches for certain functions, if the methods are 
+    # defined in different modules.
+    getproperty(parentmodule(f), cache_name(f))
+end
+
 end
