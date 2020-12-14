@@ -4,14 +4,14 @@ authors = ["Simon Kornblith <simon@simonster.com>",
            "Cédric St-Jean <cedric.stjean@gmail.com>",
            "Kevin Squire <kevin.squire@gmail.com",
            "Contributors (https://github.com/JuliaCollections/Memoize.jl/graphs/contributors)"]
-version = "0.4.3"
+version = "0.5.0"
 
 [deps]
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 
 [compat]
 MacroTools = "~0.4, ~0.5"
-julia = "1.1"
+julia = "1.2"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
