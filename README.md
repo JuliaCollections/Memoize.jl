@@ -58,14 +58,6 @@ using LRUCache
 end
 ```
 
-Note that the `@memoize` macro treats the type argument differently depending on its syntactical form: in the expression
-```julia
-@memoize CacheType function x(a, b)
-  # ...
-end
-```
-the expression `CacheType` must be either a non-function-call that evaluates to a type, or a function call that evaluates to an _instance_ of the desired cache type.  Either way, the methods `Base.get!` and `Base.empty!` must be defined for the supplied cache type.
-
 ```julia
 julia> x(1,2)
 Running
@@ -89,3 +81,13 @@ Running
 julia> x(2,3)
 5
 ```
+
+## Notes
+
+Note that the `@memoize` macro treats the type argument differently depending on its syntactical form: in the expression
+```julia
+@memoize CacheType function x(a, b)
+    # ...
+end
+```
+the expression `CacheType` must be either a non-function-call that evaluates to a type, or a function call that evaluates to an _instance_ of the desired cache type.  Either way, the methods `Base.get!` and `Base.empty!` must be defined for the supplied cache type.
