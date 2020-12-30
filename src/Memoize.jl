@@ -70,6 +70,7 @@ macro memoize(args...)
 
     esc(quote
         try
+            # So that redefining a function doesn't leak memory through the previous cache.
             empty!(memoize_cache($f))
         catch
         end
