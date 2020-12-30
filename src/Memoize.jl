@@ -69,6 +69,11 @@ macro memoize(args...)
     end
 
     esc(quote
+        try
+            empty!(memoize_cache($f))
+        catch
+        end
+
         # The `local` qualifier will make this performant even in the global scope.
         local $fcache = $cache_dict
         $(cache_name(f)) = $fcache   # for `memoize_cache(f)`

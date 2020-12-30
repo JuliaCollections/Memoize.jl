@@ -269,7 +269,7 @@ end
 method_rewrite()
 @memoize function method_rewrite() end
 GC.gc()
-@test_broken finalized
+@test finalized
 
 run = 0
 """ documented function """
