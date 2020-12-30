@@ -69,10 +69,8 @@ macro memoize(args...)
     end
 
     esc(quote
-        $fcachename = $cache_dict  # this should be `const` for performance, but then this
-                                   # fails the local-function cache test.
+        local $fcachename = $cache_dict  # see #48 comment for `local` explanation
         $(combinedef(def_dict_unmemoized))
-        empty!($fcachename)
         Base.@__doc__ $(combinedef(def_dict))
     end)
 

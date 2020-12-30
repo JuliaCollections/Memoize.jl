@@ -269,7 +269,7 @@ end
 method_rewrite()
 @memoize function method_rewrite() end
 GC.gc()
-@test finalized
+@test_broken finalized
 
 run = 0
 """ documented function """
@@ -352,3 +352,5 @@ end
 @test dict_call("bb") == 2
 @test run == 2
 
+@memoize non_allocating(x) = x+1
+@test @allocated(non_allocating(10)) == 0
