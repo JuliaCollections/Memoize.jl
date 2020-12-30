@@ -51,7 +51,7 @@ macro memoize(args...)
         end
     end
 
-    fcachename = cache_name(f)
+    @gensym fcache
     mod = __module__
 
     body = quote
@@ -69,7 +69,9 @@ macro memoize(args...)
     end
 
     esc(quote
-        local $fcachename = $cache_dict  # see #48 comment for `local` explanation
+        # The `local` qualifier will make this performant even in the global scope.
+        local $fcache = $cache_dict
+        $(cache_name(f)) = $fcache   # for `memoize_cache(f)`
         $(combinedef(def_dict_unmemoized))
         Base.@__doc__ $(combinedef(def_dict))
     end)
@@ -77,9 +79,9 @@ macro memoize(args...)
 end
 
 function memoize_cache(f::Function)
-    # This will fail in certain circumstances (eg. @memoize Base.sin(::MyNumberType) = ...) but I don't think there's 
-    # a clean answer here, because we can already have multiple caches for certain functions, if the methods are 
-    # defined in different modules.
+    # This will fail in certain circumstances (eg. @memoize Base.sin(::MyNumberType) = ...) but I
+    # don't think there's a clean answer here, because we can already have multiple caches for
+    # certain functions, if the methods are defined in different modules.
     getproperty(parentmodule(f), cache_name(f))
 end
 
