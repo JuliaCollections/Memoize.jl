@@ -10,17 +10,31 @@ Easy memoization for Julia.
 using Memoize
 @memoize function x(a)
 	println("Running")
-	a
+	2a
 end
 ```
 
 ```
 julia> x(1)
 Running
-1
+2
+
+julia> memoize_cache(x)
+IdDict{Any,Any} with 1 entry:
+  (1,) => 2
 
 julia> x(1)
-1
+2
+
+julia> empty!(memoize_cache(x))
+IdDict{Any,Any}()
+
+julia> x(1)
+Running
+2
+
+julia> x(1)
+2
 ```
 
 By default, Memoize.jl uses an [`IdDict`](https://docs.julialang.org/en/v1/base/collections/#Base.IdDict) as a cache, but it's also possible to specify the type of the cache. If you want to cache vectors based on the values they contain, you probably want this:
@@ -33,7 +47,7 @@ using Memoize
 end
 ```
 
-You can also specify the full function call for constructing the dictionary.  For example, to use LRUCache.jl:
+You can also specify the full function call for constructing the dictionary. For example, to use LRUCache.jl:
 
 ```julia
 using Memoize

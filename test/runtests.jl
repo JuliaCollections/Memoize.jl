@@ -29,6 +29,12 @@ end
 @test simple(6) == 6
 @test run == 2
 
+# empty!(memoize_cache(simple))
+# @test simple(6) == 6
+# @test run == 3
+# @test simple(6) == 6
+# @test run == 3
+
 run = 0
 @memoize function typed(a::Int)
     global run += 1
@@ -295,7 +301,6 @@ end
 @test vararg_func((1,1), (1,2)) == (1,1)
 @test run == 2
 
-
 module MemoizeTest
 using Test
 using Memoize
@@ -318,7 +323,20 @@ end
 @test custom_dict(1) == 1
 @test run == 2
 
-end
+end # module
+
+using .MemoizeTest
+using .MemoizeTest: custom_dict
+
+# empty!(memoize_cache(custom_dict))
+# @test custom_dict(1) == 1
+# @test MemoizeTest.run == 3
+# @test custom_dict(1) == 1
+# @test MemoizeTest.run == 3
+
+# empty!(memoize_cache(MemoizeTest.custom_dict))
+# @test custom_dict(1) == 1
+# @test MemoizeTest.run == 4
 
 run = 0
 @memoize Dict{Tuple{String},Int}() function dict_call(a::String)::Int
