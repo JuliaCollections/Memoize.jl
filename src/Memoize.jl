@@ -4,6 +4,13 @@ export @memoize, memoize_cache
 
 cache_name(f) = Symbol("##", f, "_memoized_cache")
 
+function try_empty_cache(f)
+    try
+        empty!(memoize_cache(f))
+    catch
+    end
+end
+
 macro memoize(args...)
     if length(args) == 1
         dicttype = :(IdDict)
@@ -69,12 +76,8 @@ macro memoize(args...)
     end
 
     esc(quote
-        try
-            # So that redefining a function doesn't leak memory through the previous cache.
-            empty!(memoize_cache($f))
-        catch
-        end
-
+        $Memoize.try_empty_cache($f) # So that redefining a function doesn't leak memory through
+                                     # the previous cache.
         # The `local` qualifier will make this performant even in the global scope.
         local $fcache = $cache_dict
         $(cache_name(f)) = $fcache   # for `memoize_cache(f)`
