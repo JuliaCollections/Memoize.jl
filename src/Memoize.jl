@@ -15,9 +15,6 @@ function _which(tt, world = typemax(UInt))
     end
 end
 
-const _brain = Dict()
-brain() = _brain
-
 """
     @memoize [cache] declaration
     
@@ -134,6 +131,7 @@ macro memoize(args...)
     @gensym world
     @gensym old_meth
     @gensym meth
+    @gensym brain
 
     sig = :(Tuple{$head, $(dispatch.(args)...)} where {$(def[:whereparams]...)})
 
@@ -148,17 +146,24 @@ macro memoize(args...)
         local $world = Base.get_world_counter()
 
         local $result = Base.@__doc__($(combinedef(def)))
+
+        local $brain = if isdefined($__module__, :__Memoize_brain__)
+            brain = getfield($__module__, :__Memoize_brain__)
+        else
+            global __Memoize_brain__ = Dict()
+        end
         
         # If overwriting a method, empty the old cache.
+        # Notice that methods are hashed by their stored signature
         local $old_meth = $_which($sig, $world)
         if $old_meth !== nothing && $old_meth.sig == $sig
-            empty!(pop!($brain(), $old_meth, []))
+            empty!(pop!($brain, $old_meth.sig, []))
         end
 
         # Store the cache so that it can be emptied later
         local $meth = $_which($sig)
         @assert $meth !== nothing
-        $brain()[$meth] = $cache
+        $brain[$meth.sig] = $cache
 
         $result
     end)
@@ -176,9 +181,12 @@ memories(f, args...) = _memories(methods(f, args...))
 function _memories(ms::Base.MethodList)
     memories = []
     for m in ms
-        memory = get(brain(), m, nothing)
-        if memory !== nothing
-            push!(memories, memory)
+        if isdefined(m.module, :__Memoize_brain__)
+            brain = getfield(m.module, :__Memoize_brain__)
+            memory = get(brain, m.sig, nothing)
+            if memory !== nothing
+                push!(memories, memory)
+            end
         end
     end
     return memories
@@ -190,7 +198,10 @@ end
     Return the memoized cache for the method m, or nothing if no such method exists
 """
 function memory(m::Method)
-    return get(brain(), m, nothing)
+    if isdefined(m.module, :__Memoize_brain__)
+        brain = getfield(m.module, :__Memoize_brain__)
+        return get(brain, m.sig, nothing)
+    end
 end
 
 end
