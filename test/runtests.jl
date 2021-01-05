@@ -346,6 +346,9 @@ finalized = false
     x
 end
 method_rewrite()
+@memoize function method_rewrite(x) end
+GC.gc()
+@test !finalized
 @memoize function method_rewrite() end
 GC.gc()
 @test finalized
