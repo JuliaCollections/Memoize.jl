@@ -484,7 +484,21 @@ end
 @test dict_call("bb") == 2
 @test run == 2
 @test dict_call("bb") == 2
+
+run = 0
+@memoize Dict{__Key__,__Val__}() function auto_dict_call(a::String)::Int
+    global run += 1
+    length(a)
+end
+@test auto_dict_call("a") == 1
+@test run == 1
+@test auto_dict_call("a") == 1
+@test run == 1
+@test auto_dict_call("bb") == 2
 @test run == 2
+@test auto_dict_call("bb") == 2
+@test run == 2
+@test memories(auto_dict_call)[1] isa Dict{Tuple{String}, Int}
 
 @memoize non_allocating(x) = x+1
 @test @allocated(non_allocating(10)) == 0
