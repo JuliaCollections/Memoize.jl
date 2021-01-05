@@ -62,14 +62,6 @@ macro memoize(args...)
             return arg_type
         end
     end
-    kwarg_sigs = map(def[:args]) do arg
-        arg_name, arg_type, is_splat, default = splitarg(arg)
-        if is_splat
-            return :(Vararg{$arg_type})
-        else
-            return arg_type
-        end
-    end
 
     # Set up identity arguments to pass to unmemoized function
     pass_args = map(args) do arg
