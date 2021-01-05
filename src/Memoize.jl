@@ -18,9 +18,17 @@ end
 const _brain = Dict()
 brain() = _brain
 
+"""
+    @memoize [cache] declaration
+    
+    Turns the function declaration into 
+    Return an array of memoized method caches for the function f.
+    
+    This function takes the same arguments as the method methods.
+"""
 macro memoize(args...)
     if length(args) == 1
-        cache_constructor = :(IdDict())
+        cache_constructor = :(IdDict{__Key__}{__Val__}())
         ex = args[1]
     elseif length(args) == 2
         (cache_constructor, ex) = args
@@ -44,7 +52,10 @@ macro memoize(args...)
         if arg_name === nothing
             arg_name = gensym()
             push!(key_args, arg_type)
-            push!(key_arg_types, :(Type{$arg_type}))
+            push!(key_arg_types, :(DataType))
+        elseif namify(arg_type) === :Vararg
+            push!(key_args, arg_name)
+            push!(key_arg_types, :(Tuple{$arg_type}))
         else
             push!(key_args, arg_name)
             push!(key_arg_types, arg_type)
@@ -90,6 +101,8 @@ macro memoize(args...)
 
     @gensym result
 
+    println(key_arg_types)
+
     # If this is a method of a callable type or object, the definition returns nothing.
     # Thus, we must construct the type of the method on our own.
     # We also need to pass the object to the inner function
@@ -102,14 +115,14 @@ macro memoize(args...)
             pushfirst!(pass_args, typ)
             pushfirst!(pass_arg_types, :(Type{$typ}))
             pushfirst!(key_args, typ)
-            pushfirst!(key_arg_types, :(Type{$typ}))
+            pushfirst!(key_arg_types, :(DataType))
         elseif @capture(def[:name], obj_::obj_type_ | ::obj_type_)
             # Callable object
             obj_type === nothing && (obj_type = Any)
             if obj === nothing
                 obj = gensym()
                 pushfirst!(key_args, obj_type)
-                pushfirst!(key_arg_types, :(Type{$obj_type}))
+                pushfirst!(key_arg_types, :(DataType))
             else
                 pushfirst!(key_args, obj)
                 pushfirst!(key_arg_types, obj_type)
@@ -150,7 +163,7 @@ macro memoize(args...)
     @gensym old_meth
     @gensym meth
 
-    esc(quote
+    res = esc(quote
         # The `local` qualifier will make this performant even in the global scope.
         local $cache = begin
             local __Key__ = (Tuple{$(key_arg_types...)} where {$(def[:whereparams]...)})
@@ -175,6 +188,7 @@ macro memoize(args...)
 
         $result
     end)
+    return res
 end
 
 """
