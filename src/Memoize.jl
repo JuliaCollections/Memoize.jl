@@ -1,6 +1,6 @@
 module Memoize
 using MacroTools: isexpr, combinearg, combinedef, namify, splitarg, splitdef, @capture
-export @memoize, memories
+export @memoize, memories, memory
 
 # I would call which($sig) but it's only on 1.6 I think
 function _which(tt, world = typemax(UInt))
@@ -21,10 +21,11 @@ brain() = _brain
 """
     @memoize [cache] declaration
     
-    Turns the function declaration into 
-    Return an array of memoized method caches for the function f.
+    Transform any method declaration `declaration` (except for inner constructors) so that calls to the original method are cached by their arguments. When an argument is unnamed, its type is treated as an argument instead.
     
-    This function takes the same arguments as the method methods.
+    `cache` should be an expression which evaluates to a dictionary-like type that supports `get!` and `empty!`, and may depend on the local variables `__Key__` and `__Value__`, which evaluate to syntactically-determined bounds on the required key and value types the cache must support.
+
+    If the given cache contains values, it is assumed that they will agree with the values the method returns. Specializing a method will not empty the cache, but overwriting a method will. The caches corresponding to methods can be determined with `memory` or `memories.`
 """
 macro memoize(args...)
     if length(args) == 1
@@ -209,6 +210,15 @@ function _memories(ms::Base.MethodList)
         end
     end
     return memories
+end
+
+"""
+    memory(m)
+    
+    Return the memoized cache for the method m, or nothing if no such method exists
+"""
+function memory(m::Method)
+    return get(brain(), m, nothing)
 end
 
 end
