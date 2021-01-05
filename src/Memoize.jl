@@ -147,20 +147,24 @@ macro memoize(args...)
 
     res = esc(quote
         # The `local` qualifier will make this performant even in the global scope.
-        local $cache = $cache_constructor
+        local $cache = begin
+            local __Key__ = (Tuple{$(key_arg_types...)} where {$(def[:whereparams]...)})
+            local __Val__ = ($return_type where {$(def[:whereparams]...)})
+            $cache_constructor
+        end
 
-        $world = Base.get_world_counter()
+        local $world = Base.get_world_counter()
 
-        $result = Base.@__doc__($(combinedef(def)))
+        local $result = Base.@__doc__($(combinedef(def)))
         
         # If overwriting a method, empty the old cache.
-        $old_meth = $_which($sig, $world)
+        local $old_meth = $_which($sig, $world)
         if $old_meth !== nothing
             empty!(pop!($brain(), $old_meth, []))
         end
 
         # Store the cache so that it can be emptied later
-        $meth = $_which($sig)
+        local $meth = $_which($sig)
         @assert $meth !== nothing
         $brain()[$meth] = $cache
         $result
