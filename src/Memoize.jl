@@ -42,111 +42,82 @@ macro memoize(args...)
     catch
         error("@memoize must be applied to a method definition")
     end
-
-    # Set up arguments for memo key
-    key_args = []
-    key_arg_types = []
-
-    # Ensure that all args have names that can be passed to the inner function
-    function tag_arg(arg)
+    
+    function split(arg, iskwarg=false)
         arg_name, arg_type, slurp, default = splitarg(arg)
-        if arg_name === nothing
-            arg_name = gensym()
-            push!(key_args, arg_type)
-            push!(key_arg_types, :(DataType))
-        elseif namify(arg_type) === :Vararg
-            push!(key_args, arg_name)
-            push!(key_arg_types, :(Tuple{$arg_type}))
-        else
-            push!(key_args, arg_name)
-            push!(key_arg_types, arg_type)
-        end
-        return combinearg(arg_name, arg_type, slurp, default)
+        trait = arg_name === nothing
+        trait && (arg_name = gensym())
+        vararg = namify(arg_type) === :Vararg
+        return (
+            arg_name = arg_name,
+            arg_type = arg_type,
+            arg_value = arg_name,
+            slurp = slurp,
+            vararg = vararg,
+            default = default,
+            trait = trait,
+            iskwarg = iskwarg)
     end
-    args = def[:args] = map(tag_arg, def[:args])
-    kwargs = def[:kwargs] = map(tag_arg, def[:kwargs])
 
-    # Get argument types for function signature
-    arg_sigs = Vector{Any}(map(def[:args]) do arg
-        arg_name, arg_type, slurp, default = splitarg(arg)
-        if slurp
-            return :(Vararg{$arg_type})
-        else
-            return arg_type
-        end
-    end)
+    combine(arg) = combinearg(arg.arg_name, arg.arg_type, arg.slurp, arg.default)
 
-    # Set up identity arguments to pass to unmemoized function
-    pass_args = Vector{Any}(map(args) do arg
-        arg_name, arg_type, slurp, default = splitarg(arg)
-        if slurp || namify(arg_type) === :Vararg
-            Expr(:..., arg_name)
-        else
-            arg_name
-        end
-    end)
-    pass_arg_types = copy(arg_sigs)
-    pass_kwargs = Vector{Any}(map(kwargs) do kwarg
-        kwarg_name, kwarg_type, slurp, default = splitarg(kwarg)
-        if slurp
-            Expr(:..., kwarg_name)
-        else
-            Expr(:kw, kwarg_name, kwarg_name)
-        end
-    end)
+    pass(arg) =
+        (arg.slurp || arg.vararg) ? Expr(:..., arg.arg_name) :
+            arg.iskwarg ? Expr(:kw, arg.arg_name, arg.arg_name) : arg.arg_name
 
+    dispatch(arg) = arg.slurp ? :(Vararg{$(arg.arg_type)}) : arg.arg_type
+
+    args = split.(def[:args])
+    kwargs = split.(def[:kwargs], true)
+    def[:args] = combine.(args)
+    def[:kwargs] = combine.(kwargs)
     @gensym inner
     inner_def = deepcopy(def)
     inner_def[:name] = inner
+    inner_args = copy(args)
+    inner_kwargs = copy(kwargs)
     pop!(inner_def, :params, nothing)
 
     @gensym result
-
-    println(key_arg_types)
 
     # If this is a method of a callable type or object, the definition returns nothing.
     # Thus, we must construct the type of the method on our own.
     # We also need to pass the object to the inner function
     if haskey(def, :name)
-        if haskey(def, :params)
-            # Callable type
-            typ = :($(def[:name]){$(def[:params]...)})
-            sig = :(Tuple{Type{$typ}, $(arg_sigs...)} where {$(def[:whereparams]...)})
-            pushfirst!(inner_def[:args], :(::Type{$typ}))
-            pushfirst!(pass_args, typ)
-            pushfirst!(pass_arg_types, :(Type{$typ}))
-            pushfirst!(key_args, typ)
-            pushfirst!(key_arg_types, :(DataType))
-        elseif @capture(def[:name], obj_::obj_type_ | ::obj_type_)
-            # Callable object
-            obj_type === nothing && (obj_type = Any)
-            if obj === nothing
-                obj = gensym()
-                pushfirst!(key_args, obj_type)
-                pushfirst!(key_arg_types, :(DataType))
-            else
-                pushfirst!(key_args, obj)
-                pushfirst!(key_arg_types, obj_type)
-            end
-            def[:name] = :($obj::$obj_type)
-            sig = :(Tuple{$obj_type, $(arg_sigs...)} where {$(def[:whereparams]...)})
-            pushfirst!(inner_def[:args], :($obj::$obj_type))
-            pushfirst!(pass_args, obj)
-            pushfirst!(pass_arg_types, obj_type)
-        else
-            # Normal call
-            sig = :(Tuple{typeof($(def[:name])), $(arg_sigs...)} where {$(def[:whereparams]...)})
+        if haskey(def, :params) # Callable type
+            typ = :($(def[:name]){$(pop!(def, :params)...)})
+            inner_args = [split(:(::Type{$typ})), inner_args...]
+            def[:name] = combine(inner_args[1])
+            head = :(Type{$typ})
+        elseif @capture(def[:name], obj_::obj_type_ | ::obj_type_) # Callable object
+            inner_args = [split(def[:name]), inner_args...]
+            def[:name] = combine(inner_args[1])
+            head = obj_type
+        else # Normal call
+            head = :(typeof($(def[:name])))
         end
-    else
-        # Anonymous function
-        sig = :(Tuple{typeof($result), $(arg_sigs...)} where {$(def[:whereparams]...)})
+    else # Anonymous function
+        head = :(typeof($result))
+    end
+    inner_def[:args] = combine.(inner_args)
+
+    # Set up arguments for memo key
+    key_names = map([inner_args; inner_kwargs]) do arg
+        arg.trait ? arg.arg_type : arg.arg_name
+    end
+    key_types = map([inner_args; inner_kwargs]) do arg
+        arg.trait ? DataType :
+        arg.vararg ? :(Tuple{$(arg.arg_type)}) : #TODO arg.slurp?
+            arg.arg_type
     end
 
     @gensym cache
 
+    pass_args = pass.(split.(inner_def[:args]))
+    pass_kwargs = pass.(split.(inner_def[:kwargs], true))
     def[:body] = quote
         $(combinedef(inner_def))
-        get!($cache, ($(key_args...),)) do
+        get!($cache, ($(key_names...),)) do
             $inner($(pass_args...); $(pass_kwargs...))
         end
     end
@@ -164,10 +135,12 @@ macro memoize(args...)
     @gensym old_meth
     @gensym meth
 
-    res = esc(quote
+    sig = :(Tuple{$head, $(dispatch.(args)...)} where {$(def[:whereparams]...)})
+
+    return esc(quote
         # The `local` qualifier will make this performant even in the global scope.
         local $cache = begin
-            local __Key__ = (Tuple{$(key_arg_types...)} where {$(def[:whereparams]...)})
+            local __Key__ = (Tuple{$(key_types...)} where {$(def[:whereparams]...)})
             local __Val__ = ($return_type where {$(def[:whereparams]...)})
             $cache_constructor
         end
@@ -189,7 +162,6 @@ macro memoize(args...)
 
         $result
     end)
-    return res
 end
 
 """
