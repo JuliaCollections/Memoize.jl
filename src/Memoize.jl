@@ -145,7 +145,7 @@ macro memoize(args...)
     @gensym old_meth
     @gensym meth
 
-    res = esc(quote
+    esc(quote
         # The `local` qualifier will make this performant even in the global scope.
         local $cache = begin
             local __Key__ = (Tuple{$(key_arg_types...)} where {$(def[:whereparams]...)})
@@ -167,10 +167,9 @@ macro memoize(args...)
         local $meth = $_which($sig)
         @assert $meth !== nothing
         $brain()[$meth] = $cache
+
         $result
     end)
-    #println(res)
-    res
 end
 
 """
