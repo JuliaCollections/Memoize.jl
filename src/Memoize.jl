@@ -132,6 +132,7 @@ macro memoize(args...)
     @gensym old_meth
     @gensym meth
     @gensym brain
+    @gensym old_brain
 
     sig = :(Tuple{$head, $(dispatch.(args)...)} where {$(def[:whereparams]...)})
 
@@ -157,7 +158,10 @@ macro memoize(args...)
         # Notice that methods are hashed by their stored signature
         local $old_meth = $_which($sig, $world)
         if $old_meth !== nothing && $old_meth.sig == $sig
-            empty!(pop!($brain, $old_meth.sig, []))
+            if isdefined($old_meth.module, :__Memoize_brain__)
+                $old_brain = getfield($old_meth.module, :__Memoize_brain__)
+                empty!(pop!($old_brain, $old_meth.sig, []))
+            end
         end
 
         # Store the cache so that it can be emptied later
