@@ -29,7 +29,7 @@ end
 @test simple(6) == 6
 @test run == 2
 
-map(empty!, function_memories(simple))
+map(empty!, memories(simple))
 @test simple(6) == 6
 @test run == 3
 @test simple(6) == 6
@@ -407,13 +407,13 @@ end # module
 using .MemoizeTest
 using .MemoizeTest: custom_dict
 
-map(empty!, function_memories(custom_dict))
+map(empty!, memories(custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 3
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 3
 
-map(empty!, function_memories(MemoizeTest.custom_dict))
+map(empty!, memories(MemoizeTest.custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 4
 

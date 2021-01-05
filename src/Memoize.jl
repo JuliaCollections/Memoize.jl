@@ -1,6 +1,6 @@
 module Memoize
 using MacroTools: isexpr, combinearg, combinedef, namify, splitarg, splitdef, @capture
-export @memoize, function_memories, method_memories
+export @memoize, memories
 
 # I would call which($sig) but it's only on 1.6 I think
 function _which(tt, world = typemax(UInt))
@@ -15,7 +15,8 @@ function _which(tt, world = typemax(UInt))
     end
 end
 
-const _memories = Dict()
+const _brain = Dict()
+brain() = _brain
 
 macro memoize(args...)
     if length(args) == 1
@@ -155,36 +156,37 @@ macro memoize(args...)
         # If overwriting a method, empty the old cache.
         $old_meth = $_which($sig, $world)
         if $old_meth !== nothing
-            empty!(pop!($_memories, $old_meth, []))
+            empty!(pop!($brain(), $old_meth, []))
         end
 
         # Store the cache so that it can be emptied later
         $meth = $_which($sig)
         @assert $meth !== nothing
-        $_memories[$meth] = $cache
+        $brain()[$meth] = $cache
         $result
     end)
     #println(res)
     res
 end
 
-function_memories(f) = _function_memories(methods(f))
-function_memories(f, types) = _function_memories(methods(f, types))
-function_memories(f, types, mod) = _function_memories(methods(f, types, mod))
+"""
+    memories(f, [types], [module])
+    
+    Return an array of memoized method caches for the function f.
+    
+    This function takes the same arguments as the method methods.
+"""
+memories(f, args...) = _memories(methods(f, args...))
 
-function _function_memories(ms)
+function _memories(ms::Base.MethodList)
     memories = []
     for m in ms
-        memory = method_memory(m)
+        memory = get(brain(), m, nothing)
         if memory !== nothing
             push!(memories, memory)
         end
     end
     return memories
-end
-
-function method_memory(m::Method)
-    return get(_memories, m, nothing)
 end
 
 end
