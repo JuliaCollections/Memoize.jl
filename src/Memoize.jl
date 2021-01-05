@@ -2,12 +2,18 @@ module Memoize
 using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
 export @memoize, memoize_cache
 
-cache_name(f) = Symbol("##", f, "_memoized_cache")
+export @memoize, memories, memory
 
-function try_empty_cache(f)
-    try
-        empty!(memoize_cache(f))
-    catch
+# I would call which($sig) but it's only on 1.6 I think
+function _which(tt, world = typemax(UInt))
+    meth = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, world)
+    if meth !== nothing
+        if meth isa Method
+            return meth::Method
+        else
+            meth = meth.func
+            return meth::Method
+        end
     end
 end
 
@@ -40,6 +46,8 @@ macro memoize(args...)
     # Set up arguments for tuple
     tup = [splitarg(arg)[1] for arg in vcat(args, kws)]
 
+    @gensym result
+
     # Set up identity arguments to pass to unmemoized function
     identargs = map(args) do arg
         arg_name, typ, slurp, default = splitarg(arg)
@@ -58,11 +66,11 @@ macro memoize(args...)
         end
     end
 
-    @gensym fcache
+    @gensym cache
     mod = __module__
 
     body = quote
-        get!($fcache, ($(tup...),)) do
+        get!($cache, ($(tup...),)) do
             $u($(identargs...); $(identkws...))
         end
     end
@@ -75,23 +83,81 @@ macro memoize(args...)
         def_dict[:body] = body
     end
 
+    @gensym world
+    @gensym old_meth
+    @gensym meth
+    @gensym brain
+    @gensym old_brain
+
+    sig = :(Tuple{typeof($(def_dict[:name])), $((splitarg(arg)[2] for arg in def_dict[:args])...)} where {$(def_dict[:whereparams]...)})
+
     esc(quote
-        $Memoize.try_empty_cache($f) # So that redefining a function doesn't leak memory through
-                                     # the previous cache.
         # The `local` qualifier will make this performant even in the global scope.
-        local $fcache = $cache_dict
-        $(cache_name(f)) = $fcache   # for `memoize_cache(f)`
+        local $cache = $cache_dict
+        local $world = Base.get_world_counter()
+
         $(combinedef(def_dict_unmemoized))
-        Base.@__doc__ $(combinedef(def_dict))
+        local $result = Base.@__doc__($(combinedef(def_dict)))
+
+        local $brain = if isdefined($__module__, :__Memoize_brain__)
+            brain = getfield($__module__, :__Memoize_brain__)
+        else
+            global __Memoize_brain__ = Dict()
+        end
+        
+        # If overwriting a method, empty the old cache.
+        # Notice that methods are hashed by their stored signature
+        local $old_meth = $_which($sig, $world)
+        if $old_meth !== nothing && $old_meth.sig == $sig
+            if isdefined($old_meth.module, :__Memoize_brain__)
+                $old_brain = getfield($old_meth.module, :__Memoize_brain__)
+                empty!(pop!($old_brain, $old_meth.sig, []))
+            end
+        end
+
+        # Store the cache so that it can be emptied later
+        local $meth = $_which($sig)
+        @assert $meth !== nothing
+        $brain[$meth.sig] = $cache
+
+        $result
     end)
 
 end
 
-function memoize_cache(f::Function)
-    # This will fail in certain circumstances (eg. @memoize Base.sin(::MyNumberType) = ...) but I
-    # don't think there's a clean answer here, because we can already have multiple caches for
-    # certain functions, if the methods are defined in different modules.
-    getproperty(parentmodule(f), cache_name(f))
+"""
+    memories(f, [types], [module])
+    
+    Return an array of memoized method caches for the function f.
+    
+    This function takes the same arguments as the method methods.
+"""
+memories(f, args...) = _memories(methods(f, args...))
+
+function _memories(ms::Base.MethodList)
+    memories = []
+    for m in ms
+        if isdefined(m.module, :__Memoize_brain__)
+            brain = getfield(m.module, :__Memoize_brain__)
+            memory = get(brain, m.sig, nothing)
+            if memory !== nothing
+                push!(memories, memory)
+            end
+        end
+    end
+    return memories
+end
+
+"""
+    memory(m)
+    
+    Return the memoized cache for the method m, or nothing if no such method exists
+"""
+function memory(m::Method)
+    if isdefined(m.module, :__Memoize_brain__)
+        brain = getfield(m.module, :__Memoize_brain__)
+        return get(brain, m.sig, nothing)
+    end
 end
 
 end

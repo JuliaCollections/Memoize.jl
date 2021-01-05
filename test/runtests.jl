@@ -29,7 +29,7 @@ end
 @test simple(6) == 6
 @test run == 2
 
-empty!(memoize_cache(simple))
+map(empty!, memories(simple))
 @test simple(6) == 6
 @test run == 3
 @test simple(6) == 6
@@ -254,6 +254,37 @@ end
 outer()
 @test !@isdefined inner
 
+genrun = 0
+@memoize function genspec(a)
+    global genrun += 1
+    a + 1
+end
+specrun = 0
+@test genspec(5) == 6
+@test genrun == 1
+@test specrun == 0
+@memoize function genspec(a::Int)
+    global specrun += 1
+    a + 2
+end
+@test genspec(5) == 7
+@test genrun == 1
+@test specrun == 1
+@test genspec(5) == 7
+@test genrun == 1
+@test specrun == 1
+@test genspec(true) == 2
+@test genrun == 2
+@test specrun == 1
+@test invoke(genspec, Tuple{Any}, 5) == 6
+@test genrun == 2
+@test specrun == 1
+
+map(empty!, memories(genspec, Tuple{Int}))
+@test genspec(5) == 7
+@test genrun == 2
+@test specrun == 2
+
 @memoize function typeinf(x)
     x + 1
 end
@@ -328,13 +359,13 @@ end # module
 using .MemoizeTest
 using .MemoizeTest: custom_dict
 
-empty!(memoize_cache(custom_dict))
+map(empty!, memories(custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 3
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 3
 
-empty!(memoize_cache(MemoizeTest.custom_dict))
+map(empty!, memories(MemoizeTest.custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 4
 
