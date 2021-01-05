@@ -36,6 +36,26 @@ map(empty!, memories(simple))
 @test run == 3
 
 run = 0
+lambda = @memoize (a) -> begin
+    global run += 1
+    a
+end
+@test lambda(5) == 5
+@test run == 1
+@test lambda(5) == 5
+@test run == 1
+@test lambda(6) == 6
+@test run == 2
+@test lambda(6) == 6
+@test run == 2
+
+map(empty!, memories(lambda))
+@test lambda(6) == 6
+@test run == 3
+@test lambda(6) == 6
+@test run == 3
+
+run = 0
 @memoize function typed(a::Int)
     global run += 1
     a

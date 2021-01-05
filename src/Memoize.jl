@@ -127,7 +127,7 @@ macro memoize(args...)
 
     if length(kwargs) == 0
         def[:body] = quote
-            $(def[:body])::Core.Compiler.return_type($inner, typeof(($(pass_args...),)))
+            $(def[:body])::Core.Compiler.widenconst(Core.Compiler.return_type($inner, typeof(($(pass_args...),))))
         end
     end
 
