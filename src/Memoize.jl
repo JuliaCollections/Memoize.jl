@@ -90,18 +90,21 @@ macro memoize(args...)
 
     @gensym result
 
-    # If this is a method of a callable object, the definition returns nothing.
+    # If this is a method of a callable type or object, the definition returns nothing.
     # Thus, we must construct the type of the method on our own.
+    # We also need to pass the object to the inner function
     if haskey(def, :name)
         if haskey(def, :params)
-            cstr_type = :($(def[:name]){$(def[:params]...)})
-            sig = :(Tuple{$cstr_type, $(arg_sigs...)} where {$(def[:whereparams]...)})
-            pushfirst!(inner_def[:args], gensym())
-            pushfirst!(pass_args, cstr_type)
-            pushfirst!(pass_arg_types, :(Type{cstr_type}))
-            pushfirst!(key_args, cstr_type)
-            pushfirst!(key_arg_types, :(Type{cstr_type}))
+            # Callable type
+            typ = :($(def[:name]){$(def[:params]...)})
+            sig = :(Tuple{Type{$typ}, $(arg_sigs...)} where {$(def[:whereparams]...)})
+            pushfirst!(inner_def[:args], :(::Type{$typ}))
+            pushfirst!(pass_args, typ)
+            pushfirst!(pass_arg_types, :(Type{$typ}))
+            pushfirst!(key_args, typ)
+            pushfirst!(key_arg_types, :(Type{$typ}))
         elseif @capture(def[:name], obj_::obj_type_ | ::obj_type_)
+            # Callable object
             obj_type === nothing && (obj_type = Any)
             if obj === nothing
                 obj = gensym()
@@ -117,9 +120,11 @@ macro memoize(args...)
             pushfirst!(pass_args, obj)
             pushfirst!(pass_arg_types, obj_type)
         else
+            # Normal call
             sig = :(Tuple{typeof($(def[:name])), $(arg_sigs...)} where {$(def[:whereparams]...)})
         end
     else
+        # Anonymous function
         sig = :(Tuple{typeof($result), $(arg_sigs...)} where {$(def[:whereparams]...)})
     end
 

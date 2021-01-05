@@ -333,6 +333,27 @@ end
 @test callable_trait_object(2)(3) == (Int, 3)
 @test run == 4
 
+run = 0
+struct callable_type{T}
+    a::T
+end
+@memoize function callable_type{T}(b) where {T}
+    global run += 1
+    (T, b)
+end
+@test callable_type{Int}(2) == (Int, 2)
+@test run == 1
+@test callable_type{Int}(2) == (Int, 2)
+@test run == 1
+@test callable_type{Int}(3) == (Int, 3)
+@test run == 2
+@test callable_type{Int}(3) == (Int, 3)
+@test run == 2
+@test callable_type{Bool}(3) == (Bool, 3)
+@test run == 3
+@test callable_type{Bool}(3) == (Bool, 3)
+@test run == 3
+
 @memoize function typeinf(x)
     x + 1
 end
