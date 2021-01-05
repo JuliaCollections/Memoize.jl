@@ -120,7 +120,6 @@ macro memoize(args...)
 
         $result
     end)
-
 end
 
 """
@@ -135,13 +134,8 @@ memories(f, args...) = _memories(methods(f, args...))
 function _memories(ms::Base.MethodList)
     memories = []
     for m in ms
-        if isdefined(m.module, :__Memoize_brain__)
-            brain = getfield(m.module, :__Memoize_brain__)
-            memory = get(brain, m.sig, nothing)
-            if memory !== nothing
-                push!(memories, memory)
-            end
-        end
+        cache = memory(m)
+        cache !== nothing && push!(memories, cache)
     end
     return memories
 end
@@ -156,6 +150,7 @@ function memory(m::Method)
         brain = getfield(m.module, :__Memoize_brain__)
         return get(brain, m.sig, nothing)
     end
+    return nothing
 end
 
 end
