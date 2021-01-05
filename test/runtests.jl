@@ -254,6 +254,28 @@ end
 outer()
 @test !@isdefined inner
 
+
+run = 0
+struct callable_object
+    a
+end
+@memoize function (o::callable_object)(b)
+    global run += 1
+    (o.a, b)
+end
+@test callable_object(1)(2) == (1, 2)
+@test run == 1
+@test callable_object(1)(2) == (1, 2)
+@test run == 1
+@test callable_object(1)(3) == (1, 3)
+@test run == 2
+@test callable_object(1)(3) == (1, 3)
+@test run == 2
+@test callable_object(2)(3) == (2, 3)
+@test run == 3
+@test callable_object(2)(3) == (2, 3)
+@test run == 3
+
 @memoize function typeinf(x)
     x + 1
 end

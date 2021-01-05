@@ -86,7 +86,7 @@ macro memoize(args...)
     key_arg_types = [arg_sigs; kwarg_sigs]
 
     @gensym inner
-    inner_def = copy(def)
+    inner_def = deepcopy(def)
     inner_def[:name] = inner
     pop!(inner_def, :params, nothing)
 
