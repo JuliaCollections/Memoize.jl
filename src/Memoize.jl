@@ -29,7 +29,7 @@ brain() = _brain
 """
 macro memoize(args...)
     if length(args) == 1
-        cache_constructor = :(IdDict{__Key__}{__Val__}())
+        cache_constructor = :(IdDict{__Key__}{__Value__}())
         ex = args[1]
     elseif length(args) == 2
         (cache_constructor, ex) = args
@@ -141,7 +141,7 @@ macro memoize(args...)
         # The `local` qualifier will make this performant even in the global scope.
         local $cache = begin
             local __Key__ = (Tuple{$(key_types...)} where {$(def[:whereparams]...)})
-            local __Val__ = ($return_type where {$(def[:whereparams]...)})
+            local __Value__ = ($return_type where {$(def[:whereparams]...)})
             $cache_constructor
         end
 

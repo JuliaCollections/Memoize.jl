@@ -52,12 +52,12 @@ using Memoize
 end
 ```
 
-You can also specify the full expression for constructing the cache. The variables `__Key__` and `__Val__` are available to the constructor expression, containing the syntactically determined type bounds on the keys and values used by Memoize.jl.  For example, to use LRUCache.jl:
+You can also specify the full expression for constructing the cache. The variables `__Key__` and `__Value__` are available to the constructor expression, containing the syntactically determined type bounds on the keys and values used by Memoize.jl.  For example, to use LRUCache.jl:
 
 ```julia
 using Memoize
 using LRUCache
-@memoize LRU{__Key__,__Val__}(maxsize=2) function x(a, b)
+@memoize LRU{__Key__,__Value__}(maxsize=2) function x(a, b)
     println("Running")
     a + b
 end

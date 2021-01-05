@@ -506,7 +506,7 @@ end
 @test dict_call("bb") == 2
 
 run = 0
-@memoize Dict{__Key__,__Val__}() function auto_dict_call(a::String)::Int
+@memoize Dict{__Key__,__Value__}() function auto_dict_call(a::String)::Int
     global run += 1
     length(a)
 end
