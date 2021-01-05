@@ -354,6 +354,37 @@ end
 @test callable_type{Bool}(3) == (Bool, 3)
 @test run == 3
 
+genrun = 0
+@memoize function genspec(a)
+    global genrun += 1
+    a + 1
+end
+specrun = 0
+@test genspec(5) == 6
+@test genrun == 1
+@test specrun == 0
+@memoize function genspec(a::Int)
+    global specrun += 1
+    a + 2
+end
+@test genspec(5) == 7
+@test genrun == 1
+@test specrun == 1
+@test genspec(5) == 7
+@test genrun == 1
+@test specrun == 1
+@test genspec(true) == 2
+@test genrun == 2
+@test specrun == 1
+@test invoke(genspec, Tuple{Any}, 5) == 6
+@test genrun == 2
+@test specrun == 1
+
+map(empty!, memories(genspec, Tuple{Int}))
+@test genspec(5) == 7
+@test genrun == 2
+@test specrun == 2
+
 @memoize function typeinf(x)
     x + 1
 end

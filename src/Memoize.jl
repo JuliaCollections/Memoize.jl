@@ -164,7 +164,7 @@ macro memoize(args...)
         
         # If overwriting a method, empty the old cache.
         local $old_meth = $_which($sig, $world)
-        if $old_meth !== nothing
+        if $old_meth !== nothing && $old_meth.sig == $sig
             empty!(pop!($brain(), $old_meth, []))
         end
 
