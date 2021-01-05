@@ -107,14 +107,14 @@ macro memoize(args...)
     end
     key_types = map([inner_args; inner_kwargs]) do arg
         arg.trait ? DataType :
-        arg.vararg ? :(Tuple{$(arg.arg_type)}) : #TODO arg.slurp?
+        arg.vararg ? :(Tuple{$(arg.arg_type)}) :
             arg.arg_type
     end
 
     @gensym cache
 
-    pass_args = pass.(split.(inner_def[:args]))
-    pass_kwargs = pass.(split.(inner_def[:kwargs], true))
+    pass_args = pass.(inner_args)
+    pass_kwargs = pass.(inner_kwargs)
     def[:body] = quote
         $(combinedef(inner_def))
         get!($cache, ($(key_names...),)) do
