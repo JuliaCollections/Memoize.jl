@@ -29,7 +29,7 @@ end
 @test simple(6) == 6
 @test run == 2
 
-empty!(memoize_cache(simple))
+map(empty!, function_memories(simple))
 @test simple(6) == 6
 @test run == 3
 @test simple(6) == 6
@@ -183,7 +183,7 @@ end
 @test run == 2
 
 run = 0
-@memoize Dict function kw_ellipsis(;a...)
+@memoize Dict() function kw_ellipsis(;a...)
     global run += 1
     a
 end
@@ -308,7 +308,7 @@ using Memoize
 const MyDict = Dict
 
 run = 0
-@memoize MyDict function custom_dict(a)
+@memoize MyDict() function custom_dict(a)
     global run += 1
     a
 end
@@ -328,13 +328,13 @@ end # module
 using .MemoizeTest
 using .MemoizeTest: custom_dict
 
-empty!(memoize_cache(custom_dict))
+map(empty!, function_memories(custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 3
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 3
 
-empty!(memoize_cache(MemoizeTest.custom_dict))
+map(empty!, function_memories(MemoizeTest.custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 4
 

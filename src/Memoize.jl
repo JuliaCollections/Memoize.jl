@@ -1,97 +1,181 @@
 module Memoize
-using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
-export @memoize, memoize_cache
+using MacroTools: isexpr, combinearg, combinedef, namify, splitarg, splitdef, @capture
+export @memoize, function_memories, method_memories
 
-cache_name(f) = Symbol("##", f, "_memoized_cache")
-
-function try_empty_cache(f)
-    try
-        empty!(memoize_cache(f))
-    catch
+# I would call which($sig) but it's only on 1.6 I think
+function _which(tt, world = typemax(UInt))
+    meth = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, world)
+    if meth !== nothing
+        if meth isa Method
+            return meth::Method
+        else
+            meth = meth.func
+            return meth::Method
+        end
     end
 end
 
+const _memories = Dict()
+
 macro memoize(args...)
     if length(args) == 1
-        dicttype = :(IdDict)
+        cache_constructor = :(IdDict())
         ex = args[1]
     elseif length(args) == 2
-        (dicttype, ex) = args
+        (cache_constructor, ex) = args
     else
         error("Memoize accepts at most two arguments")
     end
 
-    cache_dict = isexpr(dicttype, :call) ? dicttype : :(($dicttype)())
-
-    def_dict = try
+    def = try
         splitdef(ex)
     catch
         error("@memoize must be applied to a method definition")
     end
 
-    # a return type declaration of Any is a No-op because everything is <: Any
-    rettype = get(def_dict, :rtype, Any)
-    f = def_dict[:name]
-    def_dict_unmemoized = copy(def_dict)
-    def_dict_unmemoized[:name] = u = Symbol("##", f, "_unmemoized")
+    # Ensure that all args have names that can be passed to the inner function
+    function tag_arg(arg)
+        arg_name, arg_type, is_splat, default = splitarg(arg)
+        arg_name === nothing && (arg_name = gensym())
+        return combinearg(arg_name, arg_type, is_splat, default)
+    end
+    args = def[:args] = map(tag_arg, def[:args])
+    kwargs = def[:kwargs] = map(tag_arg, def[:kwargs])
 
-    args = def_dict[:args]
-    kws = def_dict[:kwargs]
-    # Set up arguments for tuple
-    tup = [splitarg(arg)[1] for arg in vcat(args, kws)]
+    # Get argument types for function signature
+    arg_sigs = map(def[:args]) do arg
+        arg_name, arg_type, is_splat, default = splitarg(arg)
+        if is_splat
+            return :(Vararg{$arg_type})
+        else
+            return arg_type
+        end
+    end
+    kwarg_sigs = map(def[:args]) do arg
+        arg_name, arg_type, is_splat, default = splitarg(arg)
+        if is_splat
+            return :(Vararg{$arg_type})
+        else
+            return arg_type
+        end
+    end
 
     # Set up identity arguments to pass to unmemoized function
-    identargs = map(args) do arg
-        arg_name, typ, slurp, default = splitarg(arg)
-        if slurp || namify(typ) === :Vararg
+    pass_args = map(args) do arg
+        arg_name, arg_type, is_splat, default = splitarg(arg)
+        if is_splat || namify(arg_type) === :Vararg
             Expr(:..., arg_name)
         else
             arg_name
         end
     end
-    identkws = map(kws) do kw
-        arg_name, typ, slurp, default = splitarg(kw)
-        if slurp
-            Expr(:..., arg_name)
+    pass_kwargs = map(kwargs) do kwarg
+        kwarg_name, kwarg_type, is_splat, default = splitarg(kwarg)
+        if is_splat
+            Expr(:..., kwarg_name)
         else
-            Expr(:kw, arg_name, arg_name)
+            Expr(:kw, kwarg_name, kwarg_name)
         end
     end
 
-    @gensym fcache
-    mod = __module__
+    # A return type declaration of Any is a No-op because everything is <: Any
+    return_type = get(def, :rtype, Any)
 
-    body = quote
-        get!($fcache, ($(tup...),)) do
-            $u($(identargs...); $(identkws...))
-        end
-    end
+    # Set up arguments for memo key
+    key_args = [splitarg(arg)[1] for arg in vcat(args, kwargs)]
+    key_arg_types = [arg_sigs; kwarg_sigs]
 
-    if length(kws) == 0
-        def_dict[:body] = quote
-            $(body)::Core.Compiler.return_type($u, typeof(($(identargs...),)))
+    @gensym inner
+    inner_def = copy(def)
+    inner_def[:name] = inner
+    pop!(inner_def, :params, nothing)
+
+    @gensym result
+
+    # If this is a method of a callable object, the definition returns nothing.
+    # Thus, we must construct the type of the method on our own.
+    if haskey(def, :name)
+        if haskey(def, :params)
+            cstr_type = :($(def[:name]){$(def[:params]...)})
+            sig = :(Tuple{$cstr_type, $(arg_sigs...)} where {$(def[:whereparams]...)})
+            pushfirst!(inner_def[:args], gensym())
+            pushfirst!(pass_args, cstr_type)
+            pushfirst!(key_args, cstr_type)
+            pushfirst!(key_arg_types, :(Type{cstr_type}))
+        elseif @capture(def[:name], obj_::obj_type_)
+            obj === nothing && (obj = gensym())
+            obj_type === nothing && (obj_type = Any)
+            def[:name] = :($obj::$obj_type)
+            sig = :(Tuple{$obj_type, $(arg_sigs...)} where {$(def[:whereparams]...)})
+            pushfirst!(inner_def[:args], :($obj::$obj_type))
+            pushfirst!(pass_args, obj)
+            pushfirst!(key_args, obj)
+            pushfirst!(key_arg_types, obj_type)
+        else
+            sig = :(Tuple{typeof($(def[:name])), $(arg_sigs...)} where {$(def[:whereparams]...)})
         end
     else
-        def_dict[:body] = body
+        sig = :(Tuple{typeof($result), $(arg_sigs...)} where {$(def[:whereparams]...)})
     end
 
-    esc(quote
-        $Memoize.try_empty_cache($f) # So that redefining a function doesn't leak memory through
-                                     # the previous cache.
-        # The `local` qualifier will make this performant even in the global scope.
-        local $fcache = $cache_dict
-        $(cache_name(f)) = $fcache   # for `memoize_cache(f)`
-        $(combinedef(def_dict_unmemoized))
-        Base.@__doc__ $(combinedef(def_dict))
-    end)
+    @gensym cache
 
+    def[:body] = quote
+        $(combinedef(inner_def))
+        get!($cache, ($(key_args...),)) do
+            $inner($(pass_args...); $(pass_kwargs...))
+        end
+    end
+
+    if length(kwargs) == 0
+        def[:body] = quote
+            $(def[:body])::Core.Compiler.return_type($inner, typeof(($(pass_args...),)))
+        end
+    end
+
+    @gensym world
+    @gensym old_meth
+    @gensym meth
+
+    esc(quote
+        # The `local` qualifier will make this performant even in the global scope.
+        local $cache = $cache_constructor
+
+        $world = Base.get_world_counter()
+
+        $result = Base.@__doc__($(combinedef(def)))
+        
+        # If overwriting a method, empty the old cache.
+        $old_meth = $_which($sig, $world)
+        if $old_meth !== nothing
+            empty!(pop!($_memories, $old_meth, []))
+        end
+
+        # Store the cache so that it can be emptied later
+        $meth = $_which($sig)
+        @assert $meth !== nothing
+        $_memories[$meth] = $cache
+        $result
+    end)
 end
 
-function memoize_cache(f::Function)
-    # This will fail in certain circumstances (eg. @memoize Base.sin(::MyNumberType) = ...) but I
-    # don't think there's a clean answer here, because we can already have multiple caches for
-    # certain functions, if the methods are defined in different modules.
-    getproperty(parentmodule(f), cache_name(f))
+function_memories(f) = _function_memories(methods(f))
+function_memories(f, types) = _function_memories(methods(f, types))
+function_memories(f, types, mod) = _function_memories(methods(f, types, mod))
+
+function _function_memories(ms)
+    memories = []
+    for m in ms
+        memory = method_memory(m)
+        if memory !== nothing
+            push!(memories, memory)
+        end
+    end
+    return memories
+end
+
+function method_memory(m::Method)
+    return get(_memories, m, nothing)
 end
 
 end
