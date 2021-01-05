@@ -39,7 +39,7 @@ macro memoize(args...)
 
     # Ensure that all args have names that can be passed to the inner function
     function tag_arg(arg)
-        arg_name, arg_type, is_splat, default = splitarg(arg)
+        arg_name, arg_type, slurp, default = splitarg(arg)
         if arg_name === nothing
             arg_name = gensym()
             push!(key_args, arg_type)
@@ -48,41 +48,39 @@ macro memoize(args...)
             push!(key_args, arg_name)
             push!(key_arg_types, arg_type)
         end
-        return combinearg(arg_name, arg_type, is_splat, default)
+        return combinearg(arg_name, arg_type, slurp, default)
     end
     args = def[:args] = map(tag_arg, def[:args])
     kwargs = def[:kwargs] = map(tag_arg, def[:kwargs])
 
     # Get argument types for function signature
-    arg_sigs = map(def[:args]) do arg
-        arg_name, arg_type, is_splat, default = splitarg(arg)
-        if is_splat
+    arg_sigs = Vector{Any}(map(def[:args]) do arg
+        arg_name, arg_type, slurp, default = splitarg(arg)
+        if slurp
             return :(Vararg{$arg_type})
         else
             return arg_type
         end
-    end
+    end)
 
     # Set up identity arguments to pass to unmemoized function
-    pass_args = map(args) do arg
-        arg_name, arg_type, is_splat, default = splitarg(arg)
-        if is_splat || namify(arg_type) === :Vararg
+    pass_args = Vector{Any}(map(args) do arg
+        arg_name, arg_type, slurp, default = splitarg(arg)
+        if slurp || namify(arg_type) === :Vararg
             Expr(:..., arg_name)
         else
             arg_name
         end
-    end
-    pass_kwargs = map(kwargs) do kwarg
-        kwarg_name, kwarg_type, is_splat, default = splitarg(kwarg)
-        if is_splat
+    end)
+    pass_arg_types = copy(arg_sigs)
+    pass_kwargs = Vector{Any}(map(kwargs) do kwarg
+        kwarg_name, kwarg_type, slurp, default = splitarg(kwarg)
+        if slurp
             Expr(:..., kwarg_name)
         else
             Expr(:kw, kwarg_name, kwarg_name)
         end
-    end
-
-    # A return type declaration of Any is a No-op because everything is <: Any
-    return_type = get(def, :rtype, Any)
+    end)
 
     @gensym inner
     inner_def = deepcopy(def)
@@ -99,6 +97,7 @@ macro memoize(args...)
             sig = :(Tuple{$cstr_type, $(arg_sigs...)} where {$(def[:whereparams]...)})
             pushfirst!(inner_def[:args], gensym())
             pushfirst!(pass_args, cstr_type)
+            pushfirst!(pass_arg_types, :(Type{cstr_type}))
             pushfirst!(key_args, cstr_type)
             pushfirst!(key_arg_types, :(Type{cstr_type}))
         elseif @capture(def[:name], obj_::obj_type_ | ::obj_type_)
@@ -115,6 +114,7 @@ macro memoize(args...)
             sig = :(Tuple{$obj_type, $(arg_sigs...)} where {$(def[:whereparams]...)})
             pushfirst!(inner_def[:args], :($obj::$obj_type))
             pushfirst!(pass_args, obj)
+            pushfirst!(pass_arg_types, obj_type)
         else
             sig = :(Tuple{typeof($(def[:name])), $(arg_sigs...)} where {$(def[:whereparams]...)})
         end
@@ -130,6 +130,9 @@ macro memoize(args...)
             $inner($(pass_args...); $(pass_kwargs...))
         end
     end
+
+    # A return type declaration of Any is a No-op because everything is <: Any
+    return_type = get(def, :rtype, Any)
 
     if length(kwargs) == 0
         def[:body] = quote
