@@ -1,7 +1,5 @@
 module Memoize
 using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
-export @memoize, memoize_cache
-
 export @memoize, memories, memory
 
 # I would call which($sig) but it's only on 1.6 I think
