@@ -33,10 +33,21 @@ macro memoize(args...)
         error("@memoize must be applied to a method definition")
     end
 
+    # Set up arguments for memo key
+    key_args = []
+    key_arg_types = []
+
     # Ensure that all args have names that can be passed to the inner function
     function tag_arg(arg)
         arg_name, arg_type, is_splat, default = splitarg(arg)
-        arg_name === nothing && (arg_name = gensym())
+        if arg_name === nothing
+            arg_name = gensym()
+            push!(key_args, arg_type)
+            push!(key_arg_types, :(Type{$arg_type}))
+        else
+            push!(key_args, arg_name)
+            push!(key_arg_types, arg_type)
+        end
         return combinearg(arg_name, arg_type, is_splat, default)
     end
     args = def[:args] = map(tag_arg, def[:args])
@@ -81,10 +92,6 @@ macro memoize(args...)
     # A return type declaration of Any is a No-op because everything is <: Any
     return_type = get(def, :rtype, Any)
 
-    # Set up arguments for memo key
-    key_args = [splitarg(arg)[1] for arg in vcat(args, kwargs)]
-    key_arg_types = [arg_sigs; kwarg_sigs]
-
     @gensym inner
     inner_def = deepcopy(def)
     inner_def[:name] = inner
@@ -102,15 +109,20 @@ macro memoize(args...)
             pushfirst!(pass_args, cstr_type)
             pushfirst!(key_args, cstr_type)
             pushfirst!(key_arg_types, :(Type{cstr_type}))
-        elseif @capture(def[:name], obj_::obj_type_)
-            obj === nothing && (obj = gensym())
+        elseif @capture(def[:name], obj_::obj_type_ | ::obj_type_)
             obj_type === nothing && (obj_type = Any)
+            if obj === nothing
+                obj = gensym()
+                pushfirst!(key_args, obj_type)
+                pushfirst!(key_arg_types, :(Type{$obj_type}))
+            else
+                pushfirst!(key_args, obj)
+                pushfirst!(key_arg_types, obj_type)
+            end
             def[:name] = :($obj::$obj_type)
             sig = :(Tuple{$obj_type, $(arg_sigs...)} where {$(def[:whereparams]...)})
             pushfirst!(inner_def[:args], :($obj::$obj_type))
             pushfirst!(pass_args, obj)
-            pushfirst!(key_args, obj)
-            pushfirst!(key_arg_types, obj_type)
         else
             sig = :(Tuple{typeof($(def[:name])), $(arg_sigs...)} where {$(def[:whereparams]...)})
         end
@@ -137,7 +149,7 @@ macro memoize(args...)
     @gensym old_meth
     @gensym meth
 
-    esc(quote
+    res = esc(quote
         # The `local` qualifier will make this performant even in the global scope.
         local $cache = $cache_constructor
 
@@ -157,6 +169,8 @@ macro memoize(args...)
         $_memories[$meth] = $cache
         $result
     end)
+    #println(res)
+    res
 end
 
 function_memories(f) = _function_memories(methods(f))

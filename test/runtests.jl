@@ -254,6 +254,42 @@ end
 outer()
 @test !@isdefined inner
 
+trait_function(a, ::Bool) = (-a,)
+run = 0
+@memoize function trait_function(a, ::Int)
+    global run += 1
+    (a,)
+end
+@test trait_function(1, true) == (-1,)
+@test run == 0
+@test trait_function(2, true) == (-2,)
+@test run == 0
+@test trait_function(1, 1) == (1,)
+@test run == 1
+@test trait_function(1, 2) == (1,)
+@test run == 1
+@test trait_function(2, 2) == (2,)
+@test run == 2
+@test trait_function(2, 2) == (2,)
+@test run == 2
+
+run = 0
+@memoize function trait_params(a, ::T) where {T}
+    global run += 1
+    (a, T)
+end
+@test trait_params(1, true) == (1, Bool)
+@test run == 1
+@test trait_params(1, false) == (1, Bool)
+@test run == 1
+@test trait_params(2, true) == (2, Bool)
+@test run == 2
+@test trait_params(2, false) == (2, Bool)
+@test run == 2
+@test trait_params(1, 3) == (1, Int)
+@test run == 3
+@test trait_params(1, 4) == (1, Int)
+@test run == 3
 
 run = 0
 struct callable_object
@@ -275,6 +311,27 @@ end
 @test run == 3
 @test callable_object(2)(3) == (2, 3)
 @test run == 3
+
+run = 0
+struct callable_trait_object{T}
+    a::T
+end
+@memoize function (::callable_trait_object{T})(b) where {T}
+    global run += 1
+    (T, b)
+end
+@test callable_trait_object(1)(2) == (Int, 2)
+@test run == 1
+@test callable_trait_object(2)(2) == (Int, 2)
+@test run == 1
+@test callable_trait_object(false)(2) == (Bool, 2)
+@test run == 2
+@test callable_trait_object(true)(3) == (Bool, 3)
+@test run == 3
+@test callable_trait_object(1)(3) == (Int, 3)
+@test run == 4
+@test callable_trait_object(2)(3) == (Int, 3)
+@test run == 4
 
 @memoize function typeinf(x)
     x + 1
