@@ -1,0 +1,7 @@
+name = "TestPrecompile"
+uuid = "ff0854c6-fbc5-40f0-bd2d-de277d7b8f28"
+authors = ["Peter Ahrens <ptrahrens@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"

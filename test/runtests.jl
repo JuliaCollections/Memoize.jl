@@ -1,4 +1,4 @@
-using Memoize, Test
+using Memoize, Test, Pkg
 
 @test_throws LoadError eval(:(@memoize))
 @test_throws LoadError eval(:(@memoize () = ()))
@@ -368,6 +368,12 @@ map(empty!, memories(custom_dict))
 map(empty!, memories(MemoizeTest.custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 4
+
+Pkg.activate(temp=true)
+Pkg.develop(path=joinpath(@__DIR__, "TestPrecompile"))
+using TestPrecompile
+
+@test length(memories(TestPrecompile.forgetful)) >= 1
 
 run = 0
 @memoize Dict{Tuple{String},Int}() function dict_call(a::String)::Int
