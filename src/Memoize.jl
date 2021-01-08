@@ -97,10 +97,12 @@ macro memoize(args...)
         $(combinedef(def_dict_unmemoized))
         local $result = Base.@__doc__($(combinedef(def_dict)))
 
-        local $brain = if isdefined($__module__, :__Memoize_brain__)
-            brain = getfield($__module__, :__Memoize_brain__)
+        if isdefined($__module__, :__Memoize_brain__)
+            local $brain = $__module__.__Memoize_brain__
         else
             global __Memoize_brain__ = Dict()
+            local $brain = __Memoize_brain__
+            $__module__
         end
         
         # If overwriting a method, empty the old cache.
@@ -108,7 +110,7 @@ macro memoize(args...)
         local $old_meth = $_which($sig, $world)
         if $old_meth !== nothing && $old_meth.sig == $sig
             if isdefined($old_meth.module, :__Memoize_brain__)
-                $old_brain = getfield($old_meth.module, :__Memoize_brain__)
+                $old_brain = $old_meth.module.__Memoize_brain__
                 empty!(pop!($old_brain, $old_meth.sig, []))
             end
         end
@@ -147,7 +149,7 @@ end
 """
 function memory(m::Method)
     if isdefined(m.module, :__Memoize_brain__)
-        brain = getfield(m.module, :__Memoize_brain__)
+        brain = m.module.__Memoize_brain__
         return get(brain, m.sig, nothing)
     end
     return nothing
