@@ -373,7 +373,16 @@ Pkg.activate(temp=true)
 Pkg.develop(path=joinpath(@__DIR__, "TestPrecompile"))
 using TestPrecompile
 
-@test length(memories(TestPrecompile.forgetful)) >= 1
+@test TestPrecompile.run == 1
+@test TestPrecompile.forgetful(1)
+@test TestPrecompile.run == 1
+
+Pkg.develop(path=joinpath(@__DIR__, "TestPrecompile2"))
+using TestPrecompile2
+
+@test TestPrecompile.run == 1
+@test TestPrecompile.forgetful(2)
+@test TestPrecompile.run == 2
 
 run = 0
 @memoize Dict{Tuple{String},Int}() function dict_call(a::String)::Int

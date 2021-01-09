@@ -1,5 +1,10 @@
 module TestPrecompile
     using Memoize
-    @memoize forgetful(x) = true
-    forgetful(true)
+    run = 0
+    @memoize function forgetful(x)
+        global run += 1
+        return true
+    end
+        
+    forgetful(1)
 end # module

@@ -1,0 +1,7 @@
+name = "TestPrecompile2"
+uuid = "7fd9c7c1-bae8-496a-aa66-4a9878cd045a"
+authors = ["Peter Ahrens <ptrahrens@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+TestPrecompile = "ff0854c6-fbc5-40f0-bd2d-de277d7b8f28"
