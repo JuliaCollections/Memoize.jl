@@ -373,6 +373,7 @@ Pkg.activate(temp=true)
 Pkg.develop(path=joinpath(@__DIR__, "TestPrecompile"))
 using TestPrecompile
 
+@test length(memories(TestPrecompile.forgetful)) == 1
 @test TestPrecompile.run == 1
 @test TestPrecompile.forgetful(1)
 @test TestPrecompile.run == 1
