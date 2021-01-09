@@ -1,6 +1,6 @@
 module Memoize
 using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
-export @memoize, memories, memory
+export @memoize, memories
 
 # I would call which($sig) but it's only on 1.6 I think
 function _which(tt, world = typemax(UInt))
@@ -127,27 +127,29 @@ end
 """
     memories(f, [types], [module])
     
-    Return an array of memoized method caches for the function f.
+    Return an array containing all the memoized method caches for the function f.
+    May also contain caches of overwritten methods.
     
     This function takes the same arguments as the method methods.
 """
 memories(f, args...) = _memories(methods(f, args...))
 
 function _memories(ms::Base.MethodList)
-    memories = []
+    caches = []
     for m in ms
-        cache = memory(m)
-        cache !== nothing && push!(memories, cache)
+        cache = memories(m)
+        cache !== nothing && push!(caches, cache)
     end
-    return memories
+    return caches
 end
 
 """
-    memory(m)
+    memories(m::Method)
     
-    Return the memoized cache for the method m, or nothing if no such method exists
+    If m has not been overwritten, return it's memoized cache. Otherwise,
+    return nothing or the cache of an overwritten method.
 """
-function memory(m::Method)
+function memories(m::Method)
     if isdefined(m.module, :__Memoize_brain__)
         brain = m.module.__Memoize_brain__
         return get(brain, m.sig, nothing)
