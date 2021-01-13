@@ -2,7 +2,8 @@ module Memoize
 using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
 export @memoize, memories
 
-# I would call which($sig) but it's only on 1.6 I think
+# which(signature::Tuple) is only on 1.6, but previous julia versions
+# use the following code under the hood anyway.
 function _which(tt, world = typemax(UInt))
     meth = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, world)
     if meth !== nothing
@@ -82,10 +83,7 @@ macro memoize(args...)
     end
 
     @gensym world
-    @gensym old_meth
     @gensym meth
-    @gensym brain
-    @gensym old_brain
 
     sig = :(Tuple{typeof($(def_dict[:name])), $((splitarg(arg)[2] for arg in def_dict[:args])...)} where {$(def_dict[:whereparams]...)})
 
@@ -97,28 +95,23 @@ macro memoize(args...)
         $(combinedef(def_dict_unmemoized))
         local $result = Base.@__doc__($(combinedef(def_dict)))
 
-        if isdefined($__module__, :__Memoize_brain__)
-            local $brain = $__module__.__Memoize_brain__
-        else
-            global __Memoize_brain__ = Dict()
-            local $brain = __Memoize_brain__
-            $__module__
+        if !isdefined($__module__, :__memories__)
+            global __memories__ = Dict()
         end
         
         # If overwriting a method, empty the old cache.
         # Notice that methods are hashed by their stored signature
-        local $old_meth = $_which($sig, $world)
-        if $old_meth !== nothing && $old_meth.sig == $sig
-            if isdefined($old_meth.module, :__Memoize_brain__)
-                $old_brain = $old_meth.module.__Memoize_brain__
-                empty!(pop!($old_brain, $old_meth.sig, []))
+        local $meth = $_which($sig, $world)
+        if $meth !== nothing && $meth.sig == $sig
+            if isdefined($meth.module, :__memories__)
+                empty!(pop!($meth.module.__memories__, $meth.sig, []))
             end
         end
 
         # Store the cache so that it can be emptied later
         local $meth = $_which($sig)
         @assert $meth !== nothing
-        $brain[$meth.sig] = $cache
+        $__module__.__memories__[$meth.sig] = $cache
 
         $result
     end)
@@ -150,9 +143,8 @@ end
     return nothing or the cache of an overwritten method.
 """
 function memories(m::Method)
-    if isdefined(m.module, :__Memoize_brain__)
-        brain = m.module.__Memoize_brain__
-        return get(brain, m.sig, nothing)
+    if isdefined(m.module, :__memories__)
+        return get(m.module.__memories__, m.sig, nothing)
     end
     return nothing
 end
