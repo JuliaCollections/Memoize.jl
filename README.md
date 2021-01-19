@@ -13,8 +13,8 @@ Easy memoization for Julia.
 ```julia
 using Memoize
 @memoize function x(a)
-	println("Running")
-	2a
+    println("Running")
+    2a
 end
 ```
 
@@ -46,8 +46,8 @@ By default, Memoize.jl uses an [`IdDict`](https://docs.julialang.org/en/v1/base/
 ```julia
 using Memoize
 @memoize Dict function x(a)
-	println("Running")
-	a
+    println("Running")
+    a
 end
 ```
 
