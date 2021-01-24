@@ -95,9 +95,7 @@ macro memoize(args...)
         $scope = nothing
 
         if isdefined($__module__, $(QuoteNode(scope)))
-            if !@isdefined($(def_dict[:name]))
-                function $(def_dict[:name]) end
-            end
+            function $(def_dict[:name]) end
 
             # If overwriting a method, empty the old cache.
             # Notice that methods are hashed by their stored signature
