@@ -95,15 +95,17 @@ macro memoize(args...)
         $(combinedef(def_dict_unmemoized))
         local $result = Base.@__doc__($(combinedef(def_dict)))
 
-        if !isdefined($__module__, :__memories__)
-            global __memories__ = Dict()
+        if !@isdefined(__memories__)
+            __memories__ = Dict()
         end
         
         # If overwriting a method, empty the old cache.
         # Notice that methods are hashed by their stored signature
         local $meth = $_which($sig, $world)
         if $meth !== nothing && $meth.sig == $sig
-            if isdefined($meth.module, :__memories__)
+            if $meth.module == $__module__ && @isdefined(__memories__)
+                empty!(pop!(__memories__, $meth.sig, []))
+            elseif isdefined($meth.module, :__memories__)
                 empty!(pop!($meth.module.__memories__, $meth.sig, []))
             end
         end
@@ -111,7 +113,7 @@ macro memoize(args...)
         # Store the cache so that it can be emptied later
         local $meth = $_which($sig)
         @assert $meth !== nothing
-        $__module__.__memories__[$meth.sig] = $cache
+        __memories__[$meth.sig] = $cache
 
         $result
     end)
