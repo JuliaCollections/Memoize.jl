@@ -254,6 +254,38 @@ end
 outer()
 @test !@isdefined inner
 
+function outer_overwrite(y)
+    run = 0
+    @memoize function inner(x)
+        run += 1
+        (x, y, run)
+    end
+    #note that calling inner here would result in an error,
+    #since both definitions of inner are evaluated before the
+    #body of outer_overwrite runs, and the cache for the second definition
+    #of inner has not been set up yet.
+    @memoize function inner(x)
+        run += 1
+        (x + 1, y, run)
+    end
+    @test inner(5) == (6, y, 1)
+    @test run == 1
+    @test inner(5) == (6, y, 1)
+    @test run == 1
+    @test inner(6) == (7, y, 2)
+    @test run == 2
+    return inner
+end
+
+inner_1 = outer_overwrite(7)
+inner_2 = outer_overwrite(42)
+@test inner_1(5) == (6, 7, 1)
+@test inner_1(6) == (7, 7, 2)
+@test inner_1(7) == (8, 7, 3)
+@test inner_2(7) == (8, 42, 3)
+@test inner_2(5) == (6, 42, 1)
+@test inner_2(6) == (7, 42, 2)
+
 genrun = 0
 @memoize function genspec(a)
     global genrun += 1

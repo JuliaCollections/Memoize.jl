@@ -122,8 +122,8 @@ end
 """
     memories(f, [types], [module])
     
-    Return an array containing all the memoized method caches for the function f.
-    May also contain caches of overwritten methods.
+    Return an array containing all the memoized method caches for the function f
+    defined at global scope. May also contain caches of overwritten methods.
     
     This function takes the same arguments as the method methods.
 """
@@ -141,8 +141,9 @@ end
 """
     memories(m::Method)
     
-    If m has not been overwritten, return it's memoized cache. Otherwise,
-    return nothing or the cache of an overwritten method.
+    If m, defined at global scope, has not been overwritten, return it's
+    memoized cache. Otherwise, return nothing or the cache of an overwritten
+    method.
 """
 function memories(m::Method)
     if isdefined(m.module, :__memories__)
