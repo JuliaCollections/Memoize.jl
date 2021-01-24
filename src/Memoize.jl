@@ -1,11 +1,11 @@
 module Memoize
 using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
-export @memoize, memories
+export @memoize, forget!
 
 # which(signature::Tuple) is only on 1.6, but previous julia versions
 # use the following code under the hood anyway.
-function _which(tt, world = typemax(UInt))
-    meth = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, world)
+function _which(tt)
+    meth = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, typemax(UInt))
     if meth !== nothing
         if meth isa Method
             return meth::Method
@@ -65,11 +65,11 @@ macro memoize(args...)
         end
     end
 
-    @gensym cache
+    cache = gensym(:__cache__)
     mod = __module__
 
     body = quote
-        get!($cache, ($(tup...),)) do
+        get!($cache[2], ($(tup...),)) do
             $u($(identargs...); $(identkws...))
         end
     end
@@ -82,71 +82,75 @@ macro memoize(args...)
         def_dict[:body] = body
     end
 
-    @gensym world
-    @gensym meth
-
     sig = :(Tuple{typeof($(def_dict[:name])), $((splitarg(arg)[2] for arg in def_dict[:args])...)} where {$(def_dict[:whereparams]...)})
+    tail = :(Tuple{$((splitarg(arg)[2] for arg in def_dict[:args])...)} where {$(def_dict[:whereparams]...)})
+
+    scope = gensym()
+    meth = gensym("meth")
 
     esc(quote
         # The `local` qualifier will make this performant even in the global scope.
-        local $cache = $cache_dict
-        local $world = Base.get_world_counter()
+        local $cache = ($tail, $cache_dict)
+
+        $scope = nothing
+
+        if isdefined($__module__, $(QuoteNode(scope)))
+            function $(def_dict[:name]) end
+
+            # If overwriting a method, empty the old cache.
+            # Notice that methods are hashed by their stored signature
+            local $meth = $_which($sig)
+            if $meth !== nothing && $meth.sig == $sig && isdefined($meth.module, :__memories__)
+                empty!(pop!($meth.module.__memories__, $meth.sig, (nothing, []))[2])
+            end
+        end
 
         $(combinedef(def_dict_unmemoized))
         local $result = Base.@__doc__($(combinedef(def_dict)))
 
-        if !isdefined($__module__, :__memories__)
-            global __memories__ = Dict()
-        end
-        
-        # If overwriting a method, empty the old cache.
-        # Notice that methods are hashed by their stored signature
-        local $meth = $_which($sig, $world)
-        if $meth !== nothing && $meth.sig == $sig
-            if isdefined($meth.module, :__memories__)
-                empty!(pop!($meth.module.__memories__, $meth.sig, []))
+        if isdefined($__module__, $(QuoteNode(scope)))
+            if !@isdefined __memories__
+                __memories__ = Dict()
             end
+            # Store the cache so that it can be emptied later
+            local $meth = $_which($sig)
+            @assert $meth !== nothing
+            __memories__[$meth.sig] = $cache
         end
-
-        # Store the cache so that it can be emptied later
-        local $meth = $_which($sig)
-        @assert $meth !== nothing
-        $__module__.__memories__[$meth.sig] = $cache
 
         $result
     end)
 end
 
 """
-    memories(f, [types], [module])
+    forget!(f, types)
     
-    Return an array containing all the memoized method caches for the function f.
-    May also contain caches of overwritten methods.
-    
-    This function takes the same arguments as the method methods.
+    If the method `which(f, types)`, is memoized, `empty!` its cache in the
+    scope of `f`.
 """
-memories(f, args...) = _memories(methods(f, args...))
-
-function _memories(ms::Base.MethodList)
-    caches = []
-    for m in ms
-        cache = memories(m)
-        cache !== nothing && push!(caches, cache)
+function forget!(f, types)
+    for name in propertynames(f) #if f is a closure, we walk its fields
+        if first(string(name), length("##__cache__")) == "##__cache__"
+            cache = getproperty(f, name)
+            if cache isa Core.Box
+                cache = cache.contents
+            end
+            (cache[1] == types) && empty!(cache[2])
+        end
     end
-    return caches
+    forget!(which(f, types)) #otherwise, a method would suffice
 end
 
 """
-    memories(m::Method)
+    forget!(m::Method)
     
-    If m has not been overwritten, return it's memoized cache. Otherwise,
-    return nothing or the cache of an overwritten method.
+    If m, defined at global scope, is a memoized function, `empty!` its
+    cache.
 """
-function memories(m::Method)
+function forget!(m::Method)
     if isdefined(m.module, :__memories__)
-        return get(m.module.__memories__, m.sig, nothing)
+        empty!(get(m.module.__memories__, m.sig, (nothing, []))[2])
     end
-    return nothing
 end
 
 end
