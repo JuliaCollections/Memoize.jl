@@ -103,7 +103,7 @@ macro memoize(args...)
         # Notice that methods are hashed by their stored signature
         local $meth = $_which($sig, $world)
         if $meth !== nothing && $meth.sig == $sig
-            if $meth.module == $__module__ && @isdefined(__memories__)
+            if $meth.module == $__module__
                 empty!(pop!(__memories__, $meth.sig, []))
             elseif isdefined($meth.module, :__memories__)
                 empty!(pop!($meth.module.__memories__, $meth.sig, []))
