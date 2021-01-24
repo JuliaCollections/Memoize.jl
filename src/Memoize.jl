@@ -2,20 +2,6 @@ module Memoize
 using MacroTools: isexpr, combinedef, namify, splitarg, splitdef
 export @memoize, forget!
 
-# which(signature::Tuple) is only on 1.6, but previous julia versions
-# use the following code under the hood anyway.
-function _which(tt)
-    meth = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, typemax(UInt))
-    if meth !== nothing
-        if meth isa Method
-            return meth::Method
-        else
-            meth = meth.func
-            return meth::Method
-        end
-    end
-end
-
 macro memoize(args...)
     if length(args) == 1
         dicttype = :(IdDict)
@@ -82,7 +68,8 @@ macro memoize(args...)
         def_dict[:body] = body
     end
 
-    sig = :(Tuple{typeof($(def_dict[:name])), $((splitarg(arg)[2] for arg in def_dict[:args])...)} where {$(def_dict[:whereparams]...)})
+    f = def_dict[:name]
+    sig = :(Tuple{typeof($f), $((splitarg(arg)[2] for arg in def_dict[:args])...)} where {$(def_dict[:whereparams]...)})
     tail = :(Tuple{$((splitarg(arg)[2] for arg in def_dict[:args])...)} where {$(def_dict[:whereparams]...)})
 
     scope = gensym()
@@ -95,13 +82,16 @@ macro memoize(args...)
         $scope = nothing
 
         if isdefined($__module__, $(QuoteNode(scope)))
-            function $(def_dict[:name]) end
+            function $f end
 
             # If overwriting a method, empty the old cache.
             # Notice that methods are hashed by their stored signature
-            local $meth = $_which($sig)
-            if $meth !== nothing && $meth.sig == $sig && isdefined($meth.module, :__memories__)
-                empty!(pop!($meth.module.__memories__, $meth.sig, (nothing, []))[2])
+            try
+                local $meth = which($f, $tail)
+                if $meth.sig == $sig && isdefined($meth.module, :__memories__)
+                    empty!(pop!($meth.module.__memories__, $meth.sig, (nothing, []))[2])
+                end
+            catch
             end
         end
 
@@ -113,8 +103,7 @@ macro memoize(args...)
                 __memories__ = Dict()
             end
             # Store the cache so that it can be emptied later
-            local $meth = $_which($sig)
-            @assert $meth !== nothing
+            local $meth = $which($f, $tail)
             __memories__[$meth.sig] = $cache
         end
 
