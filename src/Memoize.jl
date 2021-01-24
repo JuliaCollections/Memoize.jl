@@ -4,8 +4,8 @@ export @memoize, memories
 
 # which(signature::Tuple) is only on 1.6, but previous julia versions
 # use the following code under the hood anyway.
-function _which(tt, world = typemax(UInt))
-    meth = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, world)
+function _which(tt)
+    meth = ccall(:jl_gf_invoke_lookup, Any, (Any, UInt), tt, typemax(UInt))
     if meth !== nothing
         if meth isa Method
             return meth::Method
@@ -82,38 +82,42 @@ macro memoize(args...)
         def_dict[:body] = body
     end
 
-    @gensym world
-    @gensym meth
-
     sig = :(Tuple{typeof($(def_dict[:name])), $((splitarg(arg)[2] for arg in def_dict[:args])...)} where {$(def_dict[:whereparams]...)})
+
+    scope = gensym()
+    meth = gensym("meth")
 
     esc(quote
         # The `local` qualifier will make this performant even in the global scope.
         local $cache = $cache_dict
-        local $world = Base.get_world_counter()
 
-        $(combinedef(def_dict_unmemoized))
-        local $result = Base.@__doc__($(combinedef(def_dict)))
+        $scope = nothing
 
-        if !@isdefined(__memories__)
-            __memories__ = Dict()
-        end
-        
-        # If overwriting a method, empty the old cache.
-        # Notice that methods are hashed by their stored signature
-        local $meth = $_which($sig, $world)
-        if $meth !== nothing && $meth.sig == $sig
-            if $meth.module == $__module__
-                empty!(pop!(__memories__, $meth.sig, []))
-            elseif isdefined($meth.module, :__memories__)
+        if isdefined($__module__, $(QuoteNode(scope)))
+            if !@isdefined($(def_dict[:name]))
+                function $(def_dict[:name]) end
+            end
+
+            # If overwriting a method, empty the old cache.
+            # Notice that methods are hashed by their stored signature
+            local $meth = $_which($sig)
+            if $meth !== nothing && $meth.sig == $sig && isdefined($meth.module, :__memories__)
                 empty!(pop!($meth.module.__memories__, $meth.sig, []))
             end
         end
 
-        # Store the cache so that it can be emptied later
-        local $meth = $_which($sig)
-        @assert $meth !== nothing
-        __memories__[$meth.sig] = $cache
+        $(combinedef(def_dict_unmemoized))
+        local $result = Base.@__doc__($(combinedef(def_dict)))
+
+        if isdefined($__module__, $(QuoteNode(scope)))
+            if !@isdefined __memories__
+                __memories__ = Dict()
+            end
+            # Store the cache so that it can be emptied later
+            local $meth = $_which($sig)
+            @assert $meth !== nothing
+            __memories__[$meth.sig] = $cache
+        end
 
         $result
     end)
