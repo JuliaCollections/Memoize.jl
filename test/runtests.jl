@@ -29,7 +29,7 @@ end
 @test simple(6) == 6
 @test run == 2
 
-map(empty!, memories(simple))
+map(forget!, methods(simple))
 @test simple(6) == 6
 @test run == 3
 @test simple(6) == 6
@@ -274,6 +274,10 @@ function outer_overwrite(y)
     @test run == 1
     @test inner(6) == (7, y, 2)
     @test run == 2
+    @memoize function inner(x::String)
+        run += 1
+        (x, y, run)
+    end
     return inner
 end
 
@@ -282,9 +286,16 @@ inner_2 = outer_overwrite(42)
 @test inner_1(5) == (6, 7, 1)
 @test inner_1(6) == (7, 7, 2)
 @test inner_1(7) == (8, 7, 3)
+@test inner_1("hello") == ("hello", 7, 4)
 @test inner_2(7) == (8, 42, 3)
 @test inner_2(5) == (6, 42, 1)
 @test inner_2(6) == (7, 42, 2)
+@test inner_2("goodbye") == ("goodbye", 42, 4)
+@test inner_2("hello") == ("hello", 42, 5)
+forget!(inner_1, Tuple{Any})
+@test inner_1(5) == (6, 7, 5)
+@test inner_2(6) == (7, 42, 2)
+@test inner_1("hello") == ("hello", 7, 4)
 
 genrun = 0
 @memoize function genspec(a)
@@ -312,7 +323,7 @@ end
 @test genrun == 2
 @test specrun == 1
 
-map(empty!, memories(genspec, Tuple{Int}))
+map(forget!, methods(genspec, Tuple{Int}))
 @test genspec(5) == 7
 @test genrun == 2
 @test specrun == 2
@@ -391,13 +402,13 @@ end # module
 using .MemoizeTest
 using .MemoizeTest: custom_dict
 
-map(empty!, memories(custom_dict))
+map(forget!, methods(custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 3
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 3
 
-map(empty!, memories(MemoizeTest.custom_dict))
+map(forget!, methods(MemoizeTest.custom_dict))
 @test custom_dict(1) == 1
 @test MemoizeTest.run == 4
 
@@ -405,7 +416,6 @@ Pkg.activate(temp=true)
 Pkg.develop(path=joinpath(@__DIR__, "TestPrecompile"))
 using TestPrecompile
 
-@test length(memories(TestPrecompile.forgetful)) == 1
 @test TestPrecompile.run == 1
 @test TestPrecompile.forgetful(1)
 @test TestPrecompile.run == 1
