@@ -352,3 +352,5 @@ end
 @test dict_call("bb") == 2
 @test run == 2
 
+@memoize non_allocating(x) = x+1
+@test @allocated(non_allocating(10)) == 0
